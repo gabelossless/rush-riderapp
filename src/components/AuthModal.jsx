@@ -1,32 +1,50 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, UserCheck, ArrowRight, User, Car, Zap } from 'lucide-react'
+import { X, UserCheck, ArrowRight, User, Car, Zap, LogOut, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { triggerHaptic } from '../utils/haptics'
 
 export default function AuthModal({ isOpen, onClose }) {
-  const { loginPresetRider, loginPresetDriver, register, user } = useAuth()
+  const { loginPresetRider, loginPresetDriver, register, logout, user } = useAuth()
   const [tab, setTab] = useState('presets') // 'presets' | 'custom'
   const [role, setRole] = useState('passenger')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [toastMessage, setToastMessage] = useState(null)
 
   if (!isOpen) return null
+
+  const showToast = (msg) => {
+    triggerHaptic('success')
+    setToastMessage(msg)
+    setTimeout(() => {
+      setToastMessage(null)
+      onClose()
+    }, 1200)
+  }
 
   const handleCustomSubmit = (e) => {
     e.preventDefault()
     if (!name || !email) return
     register({ name, email, role })
-    onClose()
+    showToast(`Logged in as ${name}!`)
   }
 
   const handlePresetRider = () => {
     loginPresetRider()
-    onClose()
+    showToast('Logged in as Rider (Alex Rivera)')
   }
 
   const handlePresetDriver = () => {
     loginPresetDriver()
-    onClose()
+    showToast('Logged in as Driver (Marcus Vance)')
+  }
+
+  const handleLogout = () => {
+    triggerHaptic('medium')
+    logout()
+    setToastMessage('Logged out successfully')
+    setTimeout(() => setToastMessage(null), 1500)
   }
 
   return (
@@ -37,7 +55,10 @@ export default function AuthModal({ isOpen, onClose }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={() => {
+            triggerHaptic('light')
+            onClose()
+          }}
           className="absolute inset-0 bg-black/75 backdrop-blur-md"
         />
 
@@ -49,9 +70,9 @@ export default function AuthModal({ isOpen, onClose }) {
           className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-[0_0_50px_rgba(0,240,255,0.18)]"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <span
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-sm font-black text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-black text-white"
                 style={{
                   background: 'linear-gradient(135deg,#00F0FF,#7000FF)',
                   boxShadow: '0 0 18px rgba(0,240,255,0.4)',
@@ -60,22 +81,39 @@ export default function AuthModal({ isOpen, onClose }) {
                 R
               </span>
               <div>
-                <h2 className="text-lg font-extrabold tracking-wide text-white">Tester Authentication</h2>
-                <p className="text-[11px] font-medium text-white/50">Access Rider & Driver testing profiles</p>
+                <h2 className="text-lg font-extrabold tracking-wide text-white">Rider & Driver Auth</h2>
+                <p className="text-[11px] font-medium text-white/50">Instant profile switching & authentication</p>
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={() => {
+                triggerHaptic('light')
+                onClose()
+              }}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 transition-colors hover:text-white"
             >
               <X size={16} />
             </button>
           </div>
 
+          {/* Feedback Toast */}
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-[#3DFFC2]/40 bg-[#3DFFC2]/15 p-2.5 text-[12px] font-bold text-[#3DFFC2]"
+            >
+              <ShieldCheck size={16} /> {toastMessage}
+            </motion.div>
+          )}
+
           {/* Mode Tabs */}
           <div className="mt-5 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1 text-[12px] font-semibold">
             <button
-              onClick={() => setTab('presets')}
+              onClick={() => {
+                triggerHaptic('light')
+                setTab('presets')
+              }}
               className={`flex items-center justify-center gap-1.5 rounded-xl py-2 transition-all ${
                 tab === 'presets'
                   ? 'bg-gradient-to-r from-[#00F0FF]/20 to-[#7000FF]/20 border border-[#00F0FF]/40 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
@@ -85,14 +123,17 @@ export default function AuthModal({ isOpen, onClose }) {
               <Zap size={14} className={tab === 'presets' ? 'text-[#00F0FF]' : ''} /> Quick Presets
             </button>
             <button
-              onClick={() => setTab('custom')}
+              onClick={() => {
+                triggerHaptic('light')
+                setTab('custom')
+              }}
               className={`flex items-center justify-center gap-1.5 rounded-xl py-2 transition-all ${
                 tab === 'custom'
                   ? 'bg-gradient-to-r from-[#00F0FF]/20 to-[#7000FF]/20 border border-[#00F0FF]/40 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
                   : 'text-white/45 hover:text-white'
               }`}
             >
-              <User size={14} className={tab === 'custom' ? 'text-[#00F0FF]' : ''} /> Custom Sign Up
+              <User size={14} className={tab === 'custom' ? 'text-[#00F0FF]' : ''} /> Sign Up / Login
             </button>
           </div>
 
@@ -106,7 +147,7 @@ export default function AuthModal({ isOpen, onClose }) {
               {/* Rider Preset Card */}
               <button
                 onClick={handlePresetRider}
-                className="group relative flex items-center justify-between rounded-2xl border border-[#00F0FF]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#00F0FF] hover:bg-white/[0.08]"
+                className="group relative flex items-center justify-between rounded-2xl border border-[#00F0FF]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#00F0FF] hover:bg-white/[0.08] active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3.5">
                   <div
@@ -119,7 +160,7 @@ export default function AuthModal({ isOpen, onClose }) {
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] font-extrabold text-white">Alex Rivera</span>
                       <span className="rounded-full bg-[#00F0FF]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#00F0FF]">
-                        Rider
+                        Rider Profile
                       </span>
                     </div>
                     <p className="mt-0.5 text-[11px] font-medium text-white/50">
@@ -133,7 +174,7 @@ export default function AuthModal({ isOpen, onClose }) {
               {/* Driver Preset Card */}
               <button
                 onClick={handlePresetDriver}
-                className="group relative flex items-center justify-between rounded-2xl border border-[#7000FF]/40 bg-white/[0.04] p-4 text-left transition-all hover:border-[#7000FF] hover:bg-white/[0.08]"
+                className="group relative flex items-center justify-between rounded-2xl border border-[#7000FF]/40 bg-white/[0.04] p-4 text-left transition-all hover:border-[#7000FF] hover:bg-white/[0.08] active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3.5">
                   <div
@@ -146,11 +187,11 @@ export default function AuthModal({ isOpen, onClose }) {
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] font-extrabold text-white">Marcus Vance</span>
                       <span className="rounded-full bg-[#7000FF]/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#3DFFC2]">
-                        Driver
+                        Driver Profile
                       </span>
                     </div>
                     <p className="mt-0.5 text-[11px] font-medium text-white/50">
-                      Tesla Model Y • 88% Take-rate • Accepts ride requests
+                      Tesla Model Y • 88% Payout Rate • Accepts requests
                     </p>
                   </div>
                 </div>
@@ -160,29 +201,35 @@ export default function AuthModal({ isOpen, onClose }) {
           ) : (
             <form onSubmit={handleCustomSubmit} className="mt-5 flex flex-col gap-3.5">
               <div>
-                <label className="text-[10.5px] font-bold uppercase tracking-wider text-white/50">Account Role</label>
+                <label className="text-[10.5px] font-bold uppercase tracking-wider text-white/50">Account Type</label>
                 <div className="mt-1 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setRole('passenger')}
+                    onClick={() => {
+                      triggerHaptic('light')
+                      setRole('passenger')
+                    }}
                     className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[12px] font-bold transition-all ${
                       role === 'passenger'
-                        ? 'border-[#00F0FF] bg-[#00F0FF]/10 text-white'
+                        ? 'border-[#00F0FF] bg-[#00F0FF]/10 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
                         : 'border-white/10 bg-white/[0.03] text-white/40'
                     }`}
                   >
-                    <User size={14} /> Passenger
+                    <User size={14} /> Passenger (Rider)
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRole('driver')}
+                    onClick={() => {
+                      triggerHaptic('light')
+                      setRole('driver')
+                    }}
                     className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[12px] font-bold transition-all ${
                       role === 'driver'
-                        ? 'border-[#3DFFC2] bg-[#3DFFC2]/10 text-white'
+                        ? 'border-[#3DFFC2] bg-[#3DFFC2]/10 text-white shadow-[0_0_12px_rgba(61,255,194,0.2)]'
                         : 'border-white/10 bg-white/[0.03] text-white/40'
                     }`}
                   >
-                    <Car size={14} /> Driver
+                    <Car size={14} /> Driver Partner
                   </button>
                 </div>
               </div>
@@ -195,7 +242,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   placeholder="e.g. Jordan Lee"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[13px] text-white placeholder-white/50 focus:border-[#00F0FF] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[16px] text-white placeholder-white/40 focus:border-[#00F0FF] focus:outline-none"
                 />
               </div>
 
@@ -204,31 +251,41 @@ export default function AuthModal({ isOpen, onClose }) {
                 <input
                   type="email"
                   required
-                  placeholder="tester@example.com"
+                  placeholder="rider@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[13px] text-white placeholder-white/50 focus:border-[#00F0FF] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[16px] text-white placeholder-white/40 focus:border-[#00F0FF] focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-extrabold text-[#04140F] transition-transform active:scale-95"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-extrabold text-[#04140F] transition-transform active:scale-[0.98]"
                 style={{
                   background: 'linear-gradient(90deg,#00F0FF,#3DFFC2)',
                   boxShadow: '0 0 20px rgba(0,240,255,0.4)',
                 }}
               >
-                <UserCheck size={16} /> Create & Log In
+                <UserCheck size={16} /> Save & Enter App
               </button>
             </form>
           )}
 
+          {/* Active Session Card with Logout */}
           {user && (
-            <div className="mt-5 border-t border-white/10 pt-3 text-center">
-              <span className="text-[11px] font-medium text-white/40">
-                Currently logged in as <strong className="text-white">{user.name}</strong> ({user.role})
-              </span>
+            <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-3.5">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-[#3DFFC2] animate-pulse" />
+                <span className="text-[11.5px] font-medium text-white/60">
+                  Logged in as <strong className="text-white">{user.name}</strong> ({user.role})
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-400 hover:bg-red-500/20 active:scale-95"
+              >
+                <LogOut size={12} /> Log Out
+              </button>
             </div>
           )}
         </motion.div>
