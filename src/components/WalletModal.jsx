@@ -8,8 +8,6 @@ export default function WalletModal({ isOpen, onClose }) {
   const { user, addFunds } = useAuth()
   const [successToast, setSuccessToast] = useState(false)
 
-  if (!isOpen || !user) return null
-
   const handleAddFunds = (amt) => {
     triggerHaptic('success')
     addFunds(amt)
@@ -21,7 +19,7 @@ export default function WalletModal({ isOpen, onClose }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {isOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -137,7 +135,6 @@ export default function WalletModal({ isOpen, onClose }) {
             </div>
           </div>
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </div>)}</AnimatePresence>
   )
 }

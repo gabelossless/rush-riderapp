@@ -99,7 +99,7 @@ function MapEngineContent({
       }
     }
     setLen(fallbackLen)
-  }, [routePath, fallbackLen])
+  }, [routePath, fallbackLen, showRoute])
 
   // Iframe timeout safety for Real Map view
   useEffect(() => {
