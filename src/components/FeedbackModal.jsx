@@ -8,8 +8,6 @@ export default function FeedbackModal({ isOpen, onClose }) {
   const [comment, setComment] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  if (!isOpen) return null
-
   const handleSubmit = (e) => {
     e.preventDefault()
     setSubmitted(true)
@@ -22,7 +20,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {isOpen && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -148,7 +146,6 @@ export default function FeedbackModal({ isOpen, onClose }) {
             </form>
           )}
         </motion.div>
-      </div>
-    </AnimatePresence>
+      </div>)}</AnimatePresence>
   )
 }
