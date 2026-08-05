@@ -110,31 +110,7 @@
     background-size: 42px 42px;
   }
 
-  /* Safe Area Insets for iOS Notch & Home Bar */
-  .pt-safe {
-    padding-top: max(12px, env(safe-area-inset-top));
-  }
-  .pb-safe {
-    padding-bottom: max(16px, env(safe-area-inset-bottom));
-  }
-
-  /* Tactile touch response */
-  .touch-feedback {
-    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
-  }
-  .touch-feedback:active {
-    transform: scale(0.97);
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-8px); }
-  }
-
-  .animate-float-neon {
-    animation: float 6s ease-in-out infinite;
-  }
-
+  /* Safe Area Insets are handled inline via env(safe-area-inset-*) utilities. */
   @media (display-mode: standalone) {
     .pwa-statusbar {
       display: none;

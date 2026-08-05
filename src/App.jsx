@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Signal,
   Sparkles,
+  Star,
   Wallet,
   Wifi,
   Zap,
@@ -286,6 +287,9 @@ function PassengerViewContent({ onOpenWallet }) {
   const [pickupCoords, setPickupCoords] = useState({ x: 80, y: 360 })
   const [dropoffCoords, setDropoffCoords] = useState({ x: 322, y: 92 })
   const [demoNotification, setDemoNotification] = useState(null)
+  const [tip, setTip] = useState(null)
+  const [rating, setRating] = useState(0)
+  const [lastCompleted, setLastCompleted] = useState(null)
 
   const currentTierObj = RIDE_TIERS.find((t) => t.id === selectedTier) || RIDE_TIERS[1]
   const basePrice = destination ? destination.distance ? parseFloat(destination.distance) * 2.2 + 10 : 22.5 : 22.5
@@ -303,6 +307,7 @@ function PassengerViewContent({ onOpenWallet }) {
         const completedTrip = tripHistory.find(t => t.id === prevTripId.current)
         if (completedTrip) {
           setStage('completed')
+          setLastCompleted(completedTrip)
           deductRiderFare(completedTrip.fare)
         }
         prevTripId.current = null
@@ -376,6 +381,14 @@ function PassengerViewContent({ onOpenWallet }) {
     completeRide()
     setDemoNotification(`Trip Complete! Fare of ${usd(currentTrip?.fare)} processed.`)
     setTimeout(() => setDemoNotification(null), 3500)
+  }
+
+  const finishCompleted = () => {
+    triggerHaptic('success')
+    setStage('home')
+    setTip(null)
+    setRating(0)
+    setLastCompleted(null)
   }
 
   const togglePref = (key) => {
@@ -688,29 +701,99 @@ function PassengerViewContent({ onOpenWallet }) {
             exit={{ scale: 0.9, opacity: 0 }}
             className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm"
           >
-            <div className="glass-strong w-full max-w-[320px] flex flex-col items-center rounded-3xl border border-[#3DFFC2]/30 p-6 shadow-2xl text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#3DFFC2]/20 text-[#3DFFC2] mb-4">
+            <div className="glass-strong flex max-h-full w-full max-w-[320px] flex-col overflow-y-auto no-scrollbar rounded-3xl border border-[#3DFFC2]/30 p-6 shadow-2xl text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#3DFFC2]/20 text-[#3DFFC2] mb-4">
                 <Check size={32} />
               </div>
               <h2 className="text-xl font-black text-white">Trip Completed</h2>
-              <p className="mt-1 text-sm font-medium text-white/60">Your fare has been processed.</p>
-              
-              <div className="mt-6 w-full">
+              <p className="mt-1 text-sm font-medium text-white/60">
+                {lastCompleted?.driverName || 'Your driver'} got you there safely.
+              </p>
+
+              {/* Receipt */}
+              <div className="mt-5 w-full rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 text-left">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">Receipt</p>
+                <div className="flex justify-between text-[12px] font-semibold">
+                  <span className="text-white/55">{lastCompleted?.tier || 'Rush Express'} fare</span>
+                  <span className="text-white">{usd(lastCompleted?.fare || 0)}</span>
+                </div>
+                <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
+                  <span className="text-white/55">Driver payout (88%)</span>
+                  <span className="text-[#3DFFC2]">−{usd((lastCompleted?.fare || 0) * DRIVER_PCT)}</span>
+                </div>
+                <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
+                  <span className="text-white/55">Platform fee (12%)</span>
+                  <span className="text-white/80">{usd((lastCompleted?.fare || 0) * (1 - DRIVER_PCT))}</span>
+                </div>
+                {tip > 0 && (
+                  <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
+                    <span className="text-white/55">Driver tip</span>
+                    <span className="text-[#FFD166]">+{usd(tip)}</span>
+                  </div>
+                )}
+                <div className="mt-2 flex justify-between border-t border-white/10 pt-2 text-[13px] font-bold">
+                  <span className="text-white/70">Total paid</span>
+                  <span className="text-white">{usd((lastCompleted?.fare || 0) + tip)}</span>
+                </div>
+              </div>
+
+              {/* Tip selector */}
+              <div className="mt-4 w-full text-left">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">Add a tip?</p>
                 <div className="flex justify-between gap-2">
-                  {[2, 5, 10].map(tip => (
-                    <button key={tip} className="flex-1 rounded-xl border border-white/10 bg-white/[0.05] py-2 text-sm font-bold text-white transition-colors hover:bg-white/10 active:bg-white/20">
-                      ${tip}
+                  {[{ v: 0, l: 'No tip' }, { v: 2, l: '$2' }, { v: 5, l: '$5' }, { v: 10, l: '$10' }].map((t) => (
+                    <button
+                      key={t.v}
+                      onClick={() => {
+                        triggerHaptic('light')
+                        setTip(t.v)
+                      }}
+                      className={`flex-1 rounded-xl border py-2 text-sm font-bold transition-all active:scale-95 ${
+                        tip === t.v
+                          ? 'border-[#FFD166]/60 bg-[#FFD166]/15 text-[#FFD166] shadow-[0_0_12px_rgba(255,209,102,0.3)]'
+                          : 'border-white/10 bg-white/[0.05] text-white/60'
+                      }`}
+                    >
+                      {t.l}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Star rating */}
+              <div className="mt-4 w-full text-left">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">Rate your trip</p>
+                <div className="flex justify-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <motion.button
+                      key={s}
+                      whileTap={{ scale: 0.75 }}
+                      onClick={() => {
+                        triggerHaptic('light')
+                        setRating(s)
+                      }}
+                      className="p-1"
+                    >
+                      <Star
+                        size={28}
+                        strokeWidth={1.6}
+                        fill={s <= rating ? '#FFD166' : 'transparent'}
+                        stroke={s <= rating ? '#FFD166' : 'rgba(255,255,255,0.25)'}
+                        style={s <= rating ? { filter: 'drop-shadow(0 0 8px rgba(255,209,102,0.8))' } : undefined}
+                      />
+                    </motion.button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-center text-[11px] font-medium text-white/45">
+                  {rating === 0 ? 'Tap a star to rate' : `${rating} star${rating > 1 ? 's' : ''} — thanks!`}
+                </p>
+              </div>
+
               <button
-                onClick={() => setStage('home')}
-                className="mt-6 w-full rounded-xl bg-gradient-to-r from-[#3DFFC2] to-[#00F0FF] py-3 text-sm font-black text-[#0A0D15] active:scale-95 transition-transform"
+                onClick={finishCompleted}
+                className="mt-5 w-full rounded-xl bg-gradient-to-r from-[#3DFFC2] to-[#00F0FF] py-3 text-sm font-black text-[#0A0D15] active:scale-95 transition-transform"
               >
-                Submit Rating
+                Submit Rating & Done
               </button>
             </div>
           </motion.div>
