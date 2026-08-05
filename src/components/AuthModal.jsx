@@ -1,0 +1,238 @@
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, UserCheck, ArrowRight, User, Car, Zap } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+
+export default function AuthModal({ isOpen, onClose }) {
+  const { loginPresetRider, loginPresetDriver, register, user } = useAuth()
+  const [tab, setTab] = useState('presets') // 'presets' | 'custom'
+  const [role, setRole] = useState('passenger')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+
+  if (!isOpen) return null
+
+  const handleCustomSubmit = (e) => {
+    e.preventDefault()
+    if (!name || !email) return
+    register({ name, email, role })
+    onClose()
+  }
+
+  const handlePresetRider = () => {
+    loginPresetRider()
+    onClose()
+  }
+
+  const handlePresetDriver = () => {
+    loginPresetDriver()
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/75 backdrop-blur-md"
+        />
+
+        {/* Modal Container */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.94, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.94, y: 16 }}
+          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-[0_0_50px_rgba(0,240,255,0.18)]"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-sm font-black text-white"
+                style={{
+                  background: 'linear-gradient(135deg,#00F0FF,#7000FF)',
+                  boxShadow: '0 0 18px rgba(0,240,255,0.4)',
+                }}
+              >
+                R
+              </span>
+              <div>
+                <h2 className="text-lg font-extrabold tracking-wide text-white">Tester Authentication</h2>
+                <p className="text-[11px] font-medium text-white/50">Access Rider & Driver testing profiles</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 transition-colors hover:text-white"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Mode Tabs */}
+          <div className="mt-5 grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1 text-[12px] font-semibold">
+            <button
+              onClick={() => setTab('presets')}
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-2 transition-all ${
+                tab === 'presets'
+                  ? 'bg-gradient-to-r from-[#00F0FF]/20 to-[#7000FF]/20 border border-[#00F0FF]/40 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                  : 'text-white/45 hover:text-white'
+              }`}
+            >
+              <Zap size={14} className={tab === 'presets' ? 'text-[#00F0FF]' : ''} /> Quick Presets
+            </button>
+            <button
+              onClick={() => setTab('custom')}
+              className={`flex items-center justify-center gap-1.5 rounded-xl py-2 transition-all ${
+                tab === 'custom'
+                  ? 'bg-gradient-to-r from-[#00F0FF]/20 to-[#7000FF]/20 border border-[#00F0FF]/40 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                  : 'text-white/45 hover:text-white'
+              }`}
+            >
+              <User size={14} className={tab === 'custom' ? 'text-[#00F0FF]' : ''} /> Custom Sign Up
+            </button>
+          </div>
+
+          {/* Content */}
+          {tab === 'presets' ? (
+            <div className="mt-5 flex flex-col gap-3">
+              <p className="text-[11.5px] font-medium text-white/55">
+                Select a ready-to-test preset account to simulate real rider and driver interactions:
+              </p>
+
+              {/* Rider Preset Card */}
+              <button
+                onClick={handlePresetRider}
+                className="group relative flex items-center justify-between rounded-2xl border border-[#00F0FF]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#00F0FF] hover:bg-white/[0.08]"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white shadow-lg"
+                    style={{ background: 'linear-gradient(135deg,#00F0FF,#4770FF)' }}
+                  >
+                    AR
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px] font-extrabold text-white">Alex Rivera</span>
+                      <span className="rounded-full bg-[#00F0FF]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#00F0FF]">
+                        Rider
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] font-medium text-white/50">
+                      $142.50 Balance • 4.95 Rating • Ready to request rides
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-[#00F0FF] transition-transform group-hover:translate-x-1" />
+              </button>
+
+              {/* Driver Preset Card */}
+              <button
+                onClick={handlePresetDriver}
+                className="group relative flex items-center justify-between rounded-2xl border border-[#7000FF]/40 bg-white/[0.04] p-4 text-left transition-all hover:border-[#7000FF] hover:bg-white/[0.08]"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white shadow-lg"
+                    style={{ background: 'linear-gradient(135deg,#7000FF,#3DFFC2)' }}
+                  >
+                    MV
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px] font-extrabold text-white">Marcus Vance</span>
+                      <span className="rounded-full bg-[#7000FF]/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#3DFFC2]">
+                        Driver
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] font-medium text-white/50">
+                      Tesla Model Y • 88% Take-rate • Accepts ride requests
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-[#3DFFC2] transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleCustomSubmit} className="mt-5 flex flex-col gap-3.5">
+              <div>
+                <label className="text-[10.5px] font-bold uppercase tracking-wider text-white/50">Account Role</label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRole('passenger')}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[12px] font-bold transition-all ${
+                      role === 'passenger'
+                        ? 'border-[#00F0FF] bg-[#00F0FF]/10 text-white'
+                        : 'border-white/10 bg-white/[0.03] text-white/40'
+                    }`}
+                  >
+                    <User size={14} /> Passenger
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('driver')}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[12px] font-bold transition-all ${
+                      role === 'driver'
+                        ? 'border-[#3DFFC2] bg-[#3DFFC2]/10 text-white'
+                        : 'border-white/10 bg-white/[0.03] text-white/40'
+                    }`}
+                  >
+                    <Car size={14} /> Driver
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10.5px] font-bold uppercase tracking-wider text-white/50">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Jordan Lee"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[13px] text-white placeholder-white/50 focus:border-[#00F0FF] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10.5px] font-bold uppercase tracking-wider text-white/50">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="tester@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[13px] text-white placeholder-white/50 focus:border-[#00F0FF] focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-extrabold text-[#04140F] transition-transform active:scale-95"
+                style={{
+                  background: 'linear-gradient(90deg,#00F0FF,#3DFFC2)',
+                  boxShadow: '0 0 20px rgba(0,240,255,0.4)',
+                }}
+              >
+                <UserCheck size={16} /> Create & Log In
+              </button>
+            </form>
+          )}
+
+          {user && (
+            <div className="mt-5 border-t border-white/10 pt-3 text-center">
+              <span className="text-[11px] font-medium text-white/40">
+                Currently logged in as <strong className="text-white">{user.name}</strong> ({user.role})
+              </span>
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  )
+}
