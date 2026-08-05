@@ -60,8 +60,7 @@ function Avatar({ size = 44, initials = 'US', className = '' }) {
       style={{
         width: size,
         height: size,
-        background: 'linear-gradient(135deg,#00F0FF 0%,#4770FF 55%,#7000FF 100%)',
-        boxShadow: '0 0 16px rgba(0,240,255,0.35)',
+        background: '#38BDF8',
       }}
     >
       <span className="text-[13px] font-bold">{initials}</span>
@@ -86,7 +85,7 @@ function RoleSwitch({ value, onChange }) {
       title={isDriver ? 'Switch to rider view' : 'Switch to driver view'}
       className="flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[10.5px] font-bold text-white/70 transition-colors hover:text-white active:scale-95"
     >
-      {isDriver ? <Zap size={13} className="text-[#00F0FF]" /> : <Car size={13} className="text-[#00F0FF]" />}
+      {isDriver ? <Zap size={13} className="text-[#38BDF8]" /> : <Car size={13} className="text-[#38BDF8]" />}
       {isDriver ? 'Driver' : 'Rider'}
     </button>
   )
@@ -103,26 +102,24 @@ function FairFareTicker({ totalFare = 24.9 }) {
       </div>
       <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
         <motion.div
-          className="h-full rounded-l-full"
-          style={{ background: 'linear-gradient(90deg,#00F0FF,#3DFFC2)' }}
+          className="h-full rounded-l-full bg-[#34D399]"
           initial={{ width: 0 }}
           animate={{ width: '88%' }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
         />
         <motion.div
-          className="h-full rounded-r-full"
-          style={{ background: 'linear-gradient(90deg,#8B3BFF,#7000FF)' }}
+          className="h-full rounded-r-full bg-[#64748B]"
           initial={{ width: 0 }}
           animate={{ width: '12%' }}
           transition={{ duration: 0.8, delay: 0.1, ease: 'easeOut' }}
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between text-[10.5px] font-semibold">
-        <span className="flex items-center gap-1 text-[#3DFFC2]">
-          <span className="h-2 w-2 rounded-full bg-[#3DFFC2]" /> 88% Driver Payout ({usd(totalFare * DRIVER_PCT)})
+        <span className="flex items-center gap-1 text-[#34D399]">
+          <span className="h-2 w-2 rounded-full bg-[#34D399]" /> 88% Driver Payout ({usd(totalFare * DRIVER_PCT)})
         </span>
-        <span className="flex items-center gap-1 text-[#C084FC]">
-          <span className="h-2 w-2 rounded-full bg-[#C084FC]" /> 12% Platform Fee ({usd(totalFare * (1 - DRIVER_PCT))})
+        <span className="flex items-center gap-1 text-[#94A3B8]">
+          <span className="h-2 w-2 rounded-full bg-[#94A3B8]" /> 12% Platform Fee ({usd(totalFare * (1 - DRIVER_PCT))})
         </span>
       </div>
     </div>
@@ -149,7 +146,7 @@ function Header({ view, setView, onOpenAuth, onOpenWallet }) {
           onClick={onOpenWallet}
           className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] font-bold text-white/80 transition-colors hover:text-white"
         >
-          <Wallet size={13} className="text-[#00F0FF]" />
+          <Wallet size={13} className="text-[#38BDF8]" />
           {usd(user?.walletBalance)}
         </button>
 
@@ -163,7 +160,7 @@ function Header({ view, setView, onOpenAuth, onOpenWallet }) {
         ) : (
           <button
             onClick={onOpenAuth}
-            className="rounded-full border border-[#00F0FF]/40 bg-[#00F0FF]/10 px-3 py-1.5 text-[11px] font-bold text-[#00F0FF]"
+            className="rounded-full border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-3 py-1.5 text-[11px] font-bold text-[#38BDF8]"
           >
             Log In
           </button>
@@ -179,9 +176,9 @@ function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
       <div className="flex items-center justify-between">
         <button
           onClick={() => triggerHaptic('click')}
-          className="flex flex-col items-center gap-1 text-[#00F0FF] active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-1 text-[#38BDF8] active:scale-95 transition-transform"
         >
-          <Home size={19} strokeWidth={2.2} className="drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]" />
+          <Home size={19} strokeWidth={2.2} />
           <span className="text-[9px] font-semibold text-white/80">Ride</span>
         </button>
         <button
@@ -369,7 +366,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          className="absolute top-3 inset-x-3 z-30 flex items-center justify-between rounded-2xl border border-[#3DFFC2]/40 bg-[#0A0D15]/90 p-3 text-[12px] font-bold text-[#3DFFC2] shadow-xl backdrop-blur-md"
+          className="absolute top-3 inset-x-3 z-30 flex items-center justify-between rounded-2xl border border-[#34D399]/40 bg-[#0A0D15]/90 p-3 text-[12px] font-bold text-[#34D399] shadow-xl backdrop-blur-md"
         >
           <div className="flex items-center gap-2">
             <Sparkles size={16} />
@@ -414,11 +411,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                   if (destination) setStage('options')
                 }}
                 disabled={!destination}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[13.5px] font-extrabold text-[#061018] transition-transform active:scale-[0.98] disabled:opacity-40"
-                style={{
-                  background: 'linear-gradient(90deg,#00F0FF,#3DFFC2)',
-                  boxShadow: '0 0 24px rgba(0,240,255,0.45)',
-                }}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#38BDF8] py-3.5 text-[13.5px] font-extrabold text-[#061018] transition-transform active:scale-[0.98] disabled:opacity-40"
               >
                 <span className="truncate">{destination ? `Choose Tier for ${destination.name}` : 'Select a Destination above'}</span> <ArrowRight size={16} className="shrink-0" />
               </button>
@@ -465,13 +458,13 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                       }}
                       className={`relative flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
                         active
-                          ? 'border-[#00F0FF]/60 bg-[#00F0FF]/10 shadow-[0_0_20px_rgba(0,240,255,0.25)]'
+                          ? 'border-[#38BDF8]/60 bg-[#38BDF8]/10'
                           : 'border-white/10 bg-white/[0.03] hover:border-white/25'
                       }`}
                     >
                       <span
                         className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                          active ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'bg-white/[0.06] text-white/60'
+                          active ? 'bg-[#38BDF8]/20 text-[#38BDF8]' : 'bg-white/[0.06] text-white/60'
                         }`}
                       >
                         <Icon size={20} />
@@ -480,7 +473,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                         <div className="flex items-center gap-2">
                           <span className="text-[13px] font-bold text-white">{tier.name}</span>
                           {tier.featured && (
-                            <span className="rounded-full bg-gradient-to-r from-[#00F0FF] to-[#7000FF] px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                            <span className="rounded-full bg-[#38BDF8] px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-[#061018]">
                               Fastest
                             </span>
                           )}
@@ -505,11 +498,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                       onClick={() => togglePref(p.key)}
                       className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
                         on
-                          ? 'border-[#00F0FF]/60 bg-[#00F0FF]/15 text-white shadow-[0_0_14px_rgba(0,240,255,0.35)]'
+                          ? 'border-[#38BDF8]/60 bg-[#38BDF8]/15 text-white'
                           : 'border-white/10 bg-white/[0.04] text-white/50'
                       }`}
                     >
-                      <Icon size={13} className={on ? 'text-[#00F0FF]' : ''} /> {p.label}
+                      <Icon size={13} className={on ? 'text-[#38BDF8]' : ''} /> {p.label}
                     </button>
                   )
                 })}
@@ -524,7 +517,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 <span className="text-white/50">Payment Method</span>
                 <button
                   onClick={onOpenWallet}
-                  className="flex items-center gap-1.5 font-bold text-[#00F0FF] hover:underline"
+                  className="flex items-center gap-1.5 font-bold text-[#38BDF8] hover:underline"
                 >
                   <Wallet size={13} /> Rush Wallet ({usd(user?.walletBalance || 100)})
                 </button>
@@ -532,13 +525,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
               <button
                 onClick={handleConfirmRide}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[14px] font-extrabold text-white transition-transform active:scale-[0.98]"
-                style={{
-                  background: 'linear-gradient(90deg,#00F0FF,#4770FF,#7000FF)',
-                  boxShadow: '0 0 30px rgba(112,0,255,0.5)',
-                }}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#38BDF8] py-3.5 text-[14px] font-extrabold text-[#061018] transition-transform active:scale-[0.98]"
               >
-                Confirm {currentTierObj.name} ({usd(totalFare)}) <Sparkles size={16} />
+                Confirm {currentTierObj.name} ({usd(totalFare)}) <ArrowRight size={16} />
               </button>
             </div>
           </motion.div>
@@ -553,9 +542,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             className="absolute inset-0 z-20 flex items-center justify-center p-4"
           >
             <div className="glass-strong flex w-full max-w-[320px] flex-col items-center rounded-3xl border border-white/10 p-6 shadow-2xl text-center">
-              <div className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#00F0FF]/25">
-                <span className="absolute inset-0 rounded-full border border-[#00F0FF]/40 animate-pulse-ring" />
-                <Radio size={28} className="animate-spin text-[#00F0FF]" style={{ animationDuration: '2s' }} />
+              <div className="relative mb-4 flex h-20 w-20 items-center justify-center rounded-full border border-[#38BDF8]/25">
+                <span className="absolute inset-0 rounded-full border border-[#38BDF8]/40 animate-pulse-ring" />
+                <Radio size={28} className="animate-spin text-[#38BDF8]" style={{ animationDuration: '2s' }} />
               </div>
               <p className="text-[14px] font-extrabold text-white">Matching with Nearby Driver…</p>
               <p className="mt-1 text-center text-[11px] font-medium leading-relaxed text-white/50">
@@ -565,7 +554,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
               {/* Instant Auto-Match Button for Seamless 1-Person Demo */}
               <button
                 onClick={handleAutoMatchDriver}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#3DFFC2]/50 bg-[#3DFFC2]/15 py-2.5 text-[12px] font-extrabold text-[#3DFFC2] shadow-[0_0_16px_rgba(61,255,194,0.3)] transition-all active:scale-[0.98]"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#34D399]/50 bg-[#34D399]/15 py-2.5 text-[12px] font-extrabold text-[#34D399] transition-all active:scale-[0.98]"
               >
                 <Zap size={14} /> Auto-Match Demo Driver
               </button>
@@ -597,10 +586,10 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           >
             <div className="glass mx-3 mb-3 rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
               <div className="mb-3 flex items-center justify-between">
-                <span className="rounded-full bg-[#00F0FF]/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#00F0FF]">
+                <span className="rounded-full bg-[#38BDF8]/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#38BDF8]">
                   {currentTrip.status === 'ACCEPTED' ? 'Driver En Route' : 'Trip In Progress'}
                 </span>
-                <span className="text-[12px] font-black text-[#3DFFC2]">{usd(currentTrip.fare)}</span>
+                <span className="text-[12px] font-black text-[#34D399]">{usd(currentTrip.fare)}</span>
               </div>
 
               <div className="flex items-center gap-3.5 rounded-2xl border border-white/8 bg-white/[0.04] p-3">
@@ -621,14 +610,14 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 {currentTrip.status === 'ACCEPTED' ? (
                   <button
                     onClick={handleSimulateStartTrip}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[#00F0FF]/40 bg-[#00F0FF]/15 py-2 text-[11px] font-bold text-[#00F0FF] active:scale-95"
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[#38BDF8]/40 bg-[#38BDF8]/15 py-2 text-[11px] font-bold text-[#38BDF8] active:scale-95"
                   >
                     Start Ride Demo
                   </button>
                 ) : (
                   <button
                     onClick={handleSimulateCompleteTrip}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[#3DFFC2]/40 bg-[#3DFFC2]/15 py-2 text-[11px] font-bold text-[#3DFFC2] active:scale-95"
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[#34D399]/40 bg-[#34D399]/15 py-2 text-[11px] font-bold text-[#34D399] active:scale-95"
                   >
                     <Check size={14} /> Complete Ride
                   </button>
@@ -655,8 +644,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             exit={{ scale: 0.9, opacity: 0 }}
             className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm"
           >
-            <div className="glass-strong flex max-h-full w-full max-w-[320px] flex-col overflow-y-auto no-scrollbar rounded-3xl border border-[#3DFFC2]/30 p-6 shadow-2xl text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#3DFFC2]/20 text-[#3DFFC2] mb-4">
+            <div className="glass-strong flex max-h-full w-full max-w-[320px] flex-col overflow-y-auto no-scrollbar rounded-3xl border border-[#34D399]/30 p-6 shadow-2xl text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#34D399]/20 text-[#34D399] mb-4">
                 <Check size={32} />
               </div>
               <h2 className="text-xl font-black text-white">Trip Completed</h2>
@@ -673,7 +662,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 </div>
                 <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
                   <span className="text-white/55">Driver payout (88%)</span>
-                  <span className="text-[#3DFFC2]">−{usd((lastCompleted?.fare || 0) * DRIVER_PCT)}</span>
+                  <span className="text-[#34D399]">−{usd((lastCompleted?.fare || 0) * DRIVER_PCT)}</span>
                 </div>
                 <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
                   <span className="text-white/55">Platform fee (12%)</span>
@@ -704,7 +693,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                       }}
                       className={`flex-1 rounded-xl border py-2 text-sm font-bold transition-all active:scale-95 ${
                         tip === t.v
-                          ? 'border-[#FFD166]/60 bg-[#FFD166]/15 text-[#FFD166] shadow-[0_0_12px_rgba(255,209,102,0.3)]'
+                          ? 'border-[#FFD166]/60 bg-[#FFD166]/15 text-[#FFD166]'
                           : 'border-white/10 bg-white/[0.05] text-white/60'
                       }`}
                     >
@@ -733,7 +722,6 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                         strokeWidth={1.6}
                         fill={s <= rating ? '#FFD166' : 'transparent'}
                         stroke={s <= rating ? '#FFD166' : 'rgba(255,255,255,0.25)'}
-                        style={s <= rating ? { filter: 'drop-shadow(0 0 8px rgba(255,209,102,0.8))' } : undefined}
                       />
                     </motion.button>
                   ))}
@@ -745,7 +733,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
               <button
                 onClick={finishCompleted}
-                className="mt-5 w-full rounded-xl bg-gradient-to-r from-[#3DFFC2] to-[#00F0FF] py-3 text-sm font-black text-[#0A0D15] active:scale-95 transition-transform"
+                className="mt-5 w-full rounded-xl bg-[#38BDF8] py-3 text-sm font-black text-[#061018] active:scale-95 transition-transform"
               >
                 Submit Rating & Done
               </button>
@@ -821,19 +809,19 @@ function DriverViewContent({ onImmersiveChange }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">Driver Operator</p>
-              <p className={`mt-0.5 text-[14px] font-extrabold ${online ? 'text-[#3DFFC2]' : 'text-white/60'}`}>
+              <p className={`mt-0.5 text-[14px] font-extrabold ${online ? 'text-[#34D399]' : 'text-white/60'}`}>
                 {online ? 'Online & Listening' : 'Offline'}
               </p>
             </div>
             <button
               onClick={() => setOnline(!online)}
               className={`relative h-7 w-12 rounded-full border transition-all ${
-                online ? 'border-[#3DFFC2]/50 bg-[#3DFFC2]/20' : 'border-white/15 bg-white/[0.06]'
+                online ? 'border-[#34D399]/50 bg-[#34D399]/20' : 'border-white/15 bg-white/[0.06]'
               }`}
             >
               <span
                 className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
-                  online ? 'left-6 bg-[#3DFFC2]' : 'left-0.5'
+                  online ? 'left-6 bg-[#34D399]' : 'left-0.5'
                 }`}
               />
             </button>
@@ -846,11 +834,11 @@ function DriverViewContent({ onImmersiveChange }) {
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
               <span className="text-[9px] font-bold uppercase tracking-wider text-white/55">Trips</span>
-              <p className="mt-0.5 text-[15px] font-extrabold text-[#00F0FF]">{user?.todayRides || 14}</p>
+              <p className="mt-0.5 text-[15px] font-extrabold text-[#38BDF8]">{user?.todayRides || 14}</p>
             </div>
             <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
               <span className="text-[9px] font-bold uppercase tracking-wider text-white/55">Keep Rate</span>
-              <p className="mt-0.5 text-[15px] font-extrabold text-[#3DFFC2]">88%</p>
+              <p className="mt-0.5 text-[15px] font-extrabold text-[#34D399]">88%</p>
             </div>
           </div>
         </div>
@@ -860,13 +848,13 @@ function DriverViewContent({ onImmersiveChange }) {
           <motion.div
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="glass-strong mt-3 rounded-3xl border border-[#00F0FF]/40 p-4 shadow-[0_0_30px_rgba(0,240,255,0.2)]"
+            className="glass-strong mt-3 rounded-3xl border border-[#38BDF8]/40 p-4"
           >
             <div className="mb-2 flex items-center justify-between">
-              <span className="rounded-full bg-[#00F0FF]/20 px-2.5 py-0.5 text-[9.5px] font-black uppercase text-[#00F0FF]">
+              <span className="rounded-full bg-[#38BDF8]/20 px-2.5 py-0.5 text-[9.5px] font-black uppercase text-[#38BDF8]">
                 New Trip Request! ({countdown}s)
               </span>
-              <span className="text-[12px] font-extrabold text-[#3DFFC2]">
+              <span className="text-[12px] font-extrabold text-[#34D399]">
                 Earn {usd(currentTrip.driverFare || currentTrip.fare * 0.88)}
               </span>
             </div>
@@ -879,11 +867,7 @@ function DriverViewContent({ onImmersiveChange }) {
 
             <button
               onClick={handleAccept}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-black text-[#04140F]"
-              style={{
-                background: 'linear-gradient(90deg,#3DFFC2,#00F0FF)',
-                boxShadow: '0 0 20px rgba(61,255,194,0.5)',
-              }}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#34D399] py-3 text-[13px] font-black text-[#04140F]"
             >
               <Check size={16} /> Accept Rush Ride
             </button>
@@ -897,25 +881,25 @@ function DriverViewContent({ onImmersiveChange }) {
             animate={{ y: 0, opacity: 1 }}
             className="glass-strong mt-3 rounded-3xl border border-white/15 p-4"
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#00F0FF]">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#38BDF8]">
               {currentTrip.status === 'ACCEPTED' ? 'En Route to Pickup' : 'Driving to Dropoff'}
             </p>
             <p className="truncate text-[14px] font-extrabold text-white">{currentTrip.destination}</p>
-            <p className="text-[11px] font-medium text-[#3DFFC2]">
+            <p className="text-[11px] font-medium text-[#34D399]">
               Net Payout: {usd(currentTrip.driverFare || currentTrip.fare * 0.88)}
             </p>
 
             {currentTrip.status === 'ACCEPTED' ? (
               <button
                 onClick={startRide}
-                className="mt-3 w-full rounded-xl border border-[#00F0FF]/50 bg-[#00F0FF]/15 py-3 text-[13px] font-bold text-[#00F0FF] hover:bg-[#00F0FF]/25"
+                className="mt-3 w-full rounded-xl border border-[#38BDF8]/50 bg-[#38BDF8]/15 py-3 text-[13px] font-bold text-[#38BDF8] hover:bg-[#38BDF8]/25"
               >
                 Start Ride
               </button>
             ) : (
               <button
                 onClick={handleComplete}
-                className="mt-3 w-full rounded-xl border border-[#3DFFC2]/50 bg-[#3DFFC2]/15 py-3 text-[13px] font-bold text-[#3DFFC2] hover:bg-[#3DFFC2]/25"
+                className="mt-3 w-full rounded-xl border border-[#34D399]/50 bg-[#34D399]/15 py-3 text-[13px] font-bold text-[#34D399] hover:bg-[#34D399]/25"
               >
                 Complete Ride & Claim Payout
               </button>
@@ -925,7 +909,7 @@ function DriverViewContent({ onImmersiveChange }) {
 
         {/* Toast Notification */}
         {toast && (
-          <div className="glass-strong mt-3 flex items-center gap-2 rounded-2xl border border-[#3DFFC2]/40 p-3 text-[12px] font-bold text-[#3DFFC2]">
+          <div className="glass-strong mt-3 flex items-center gap-2 rounded-2xl border border-[#34D399]/40 p-3 text-[12px] font-bold text-[#34D399]">
             <CircleCheck size={16} /> {toast}
           </div>
         )}
@@ -944,7 +928,7 @@ function InvestorPanel({ onOpenAuth }) {
   return (
     <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="hidden w-[380px] lg:block">
       <div className="mb-3 flex items-center gap-2">
-        <span className="rounded-full border border-[#3DFFC2]/40 bg-[#3DFFC2]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#3DFFC2]">
+        <span className="rounded-full border border-[#34D399]/40 bg-[#34D399]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#34D399]">
           Series A · Interactive Tester Hub
         </span>
       </div>
@@ -959,7 +943,7 @@ function InvestorPanel({ onOpenAuth }) {
 
       <div className="mt-5 flex flex-col gap-2.5">
         <div className="glass flex items-center gap-3.5 rounded-2xl border border-white/10 p-3.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3DFFC2]/15 text-[#3DFFC2]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#34D399]/15 text-[#34D399]">
             <CircleDollarSign size={20} />
           </span>
           <div>
@@ -969,7 +953,7 @@ function InvestorPanel({ onOpenAuth }) {
         </div>
 
         <div className="glass flex items-center gap-3.5 rounded-2xl border border-white/10 p-3.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00F0FF]/15 text-[#00F0FF]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#38BDF8]/15 text-[#38BDF8]">
             <Zap size={20} />
           </span>
           <div>
@@ -980,14 +964,14 @@ function InvestorPanel({ onOpenAuth }) {
       </div>
 
       <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-[11.5px] text-white/60">
-        <ShieldCheck size={18} className="text-[#00F0FF]" />
+        <ShieldCheck size={18} className="text-[#38BDF8]" />
         <div>
           <span>Logged in as: </span>
           <strong className="text-white">{user?.name}</strong> ({user?.role})
         </div>
         <button
           onClick={onOpenAuth}
-          className="ml-auto rounded-lg border border-[#00F0FF]/40 bg-[#00F0FF]/10 px-2.5 py-1 text-[10.5px] font-bold text-[#00F0FF]"
+          className="ml-auto rounded-lg border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-2.5 py-1 text-[10.5px] font-bold text-[#38BDF8]"
         >
           Switch Profile
         </button>
@@ -1031,8 +1015,8 @@ function PhoneFrame({
   return (
     <div className="relative h-[100dvh] w-full max-h-none sm:h-[820px] sm:max-h-[calc(100vh-64px)] sm:w-[410px]">
       <div
-        className="pointer-events-none absolute -inset-6 hidden rounded-[3.5rem] opacity-40 blur-3xl sm:block"
-        style={{ background: 'linear-gradient(160deg,rgba(0,240,255,0.35),rgba(112,0,255,0.35))' }}
+        className="pointer-events-none absolute -inset-6 hidden rounded-[3.5rem] opacity-15 blur-3xl sm:block"
+        style={{ background: 'rgba(56,189,248,0.5)' }}
       />
       <div className="relative flex h-full w-full flex-col overflow-hidden bg-void shadow-2xl sm:rounded-[2.6rem] sm:border sm:border-white/15">
         <StatusBar />
@@ -1087,16 +1071,16 @@ export default function App() {
     <AuthProvider>
       <TripProvider>
         <div className="relative min-h-screen overflow-hidden bg-void font-sans">
-          {/* Ambient Background Glows */}
+          {/* Ambient Background — subtle, not a light show */}
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-0 grid-bg opacity-70" />
+            <div className="absolute inset-0 grid-bg opacity-25" />
             <div
-              className="absolute -left-40 top-0 h-[560px] w-[560px] rounded-full opacity-30 blur-3xl"
-              style={{ background: 'radial-gradient(circle,#00F0FF,transparent 65%)' }}
+              className="absolute -left-40 top-0 h-[560px] w-[560px] rounded-full opacity-10 blur-3xl"
+              style={{ background: 'radial-gradient(circle,#38BDF8,transparent 65%)' }}
             />
             <div
-              className="absolute -right-40 bottom-0 h-[620px] w-[620px] rounded-full opacity-30 blur-3xl"
-              style={{ background: 'radial-gradient(circle,#7000FF,transparent 65%)' }}
+              className="absolute -right-40 bottom-0 h-[620px] w-[620px] rounded-full opacity-10 blur-3xl"
+              style={{ background: 'radial-gradient(circle,#6366F1,transparent 65%)' }}
             />
           </div>
 

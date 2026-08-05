@@ -35,12 +35,12 @@ export default function LocationSearch({
       {/* Pickup & Destination Bar */}
       <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] p-3 backdrop-blur-md">
         {/* Connector line */}
-        <div className="absolute left-[27px] top-[26px] bottom-[26px] w-[2px] bg-gradient-to-b from-[#00F0FF] via-[#7000FF] to-[#3DFFC2]" />
+        <div className="absolute left-[27px] top-[26px] bottom-[26px] w-[2px] bg-gradient-to-b from-[#38BDF8] to-[#818CF8]" />
 
         {/* Pickup Input Row */}
         <div className="flex items-center gap-3 py-1">
-          <span className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#00F0FF]/20 text-[#00F0FF]">
-            <span className="h-2 w-2 rounded-full bg-[#00F0FF] shadow-[0_0_8px_#00F0FF]" />
+          <span className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#38BDF8]/20 text-[#38BDF8]">
+            <span className="h-2 w-2 rounded-full bg-[#38BDF8]" />
           </span>
           <div className="flex-1">
             <span className="text-[9px] font-extrabold uppercase tracking-wider text-white/40">Pickup</span>
@@ -66,8 +66,8 @@ export default function LocationSearch({
 
         {/* Destination Input Row */}
         <div className="flex items-center gap-3 py-1">
-          <span className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#A855F7]/20 text-[#A855F7]">
-            <Navigation size={12} className="text-[#A855F7]" />
+          <span className="relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-[#818CF8]/20 text-[#818CF8]">
+            <Navigation size={12} className="text-[#818CF8]" />
           </span>
           <div className="flex-1">
             <span className="text-[9px] font-extrabold uppercase tracking-wider text-white/40">Destination</span>
@@ -93,7 +93,7 @@ export default function LocationSearch({
       {/* Preset Destinations Chips */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
         <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/40 whitespace-nowrap">
-          <Sparkles size={11} className="text-[#00F0FF]" /> Quick Destinations:
+          <Sparkles size={11} className="text-[#38BDF8]" /> Quick Destinations:
         </span>
         {PRESET_DESTINATIONS.map((dest) => {
           const Icon = dest.icon
@@ -104,7 +104,7 @@ export default function LocationSearch({
               onClick={() => handleSelect(dest)}
               className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-bold whitespace-nowrap transition-all ${
                 isSelected
-                  ? 'border-[#00F0FF] bg-[#00F0FF]/15 text-white shadow-[0_0_12px_rgba(0,240,255,0.3)]'
+                  ? 'border-[#38BDF8] bg-[#38BDF8]/15 text-white'
                   : 'border-white/10 bg-white/[0.04] text-white/70 hover:border-white/20 hover:text-white'
               }`}
             >
@@ -139,7 +139,7 @@ export default function LocationSearch({
                     <p className="text-[10px] text-white/40">{dest.address}</p>
                   </div>
                 </div>
-                <div className="text-right text-[11px] font-bold text-[#00F0FF]">
+                <div className="text-right text-[11px] font-bold text-[#38BDF8]">
                   {dest.eta}
                 </div>
               </button>

@@ -8,9 +8,9 @@ export default {
         surface: '#12151E',
         'surface-2': '#191D29',
         neon: {
-          cyan: '#00F0FF',
-          violet: '#7000FF',
-          mint: '#3DFFC2',
+          cyan: '#38BDF8',
+          violet: '#6366F1',
+          mint: '#34D399',
         },
       },
       fontFamily: {

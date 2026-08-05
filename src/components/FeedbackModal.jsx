@@ -33,11 +33,11 @@ export default function FeedbackModal({ isOpen, onClose }) {
           initial={{ opacity: 0, scale: 0.94, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
-          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-[0_0_50px_rgba(0,240,255,0.18)]"
+          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-2xl shadow-black/50"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-[#00F0FF]/15 text-[#00F0FF]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-[#38BDF8]/15 text-[#38BDF8]">
                 <MessageSquare size={20} />
               </span>
               <div>
@@ -55,7 +55,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
 
           {submitted ? (
             <div className="my-8 flex flex-col items-center justify-center text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#3DFFC2]/20 text-[#3DFFC2]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#34D399]/20 text-[#34D399]">
                 <CheckCircle2 size={32} />
               </div>
               <h3 className="mt-3 text-lg font-bold text-white">Feedback Received!</h3>
@@ -90,7 +90,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
                     onClick={() => setCategory('feature')}
                     className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[11px] font-bold transition-all ${
                       category === 'feature'
-                        ? 'border-[#00F0FF] bg-[#00F0FF]/15 text-white'
+                        ? 'border-[#38BDF8] bg-[#38BDF8]/15 text-white'
                         : 'border-white/10 bg-white/[0.03] text-white/40'
                     }`}
                   >
@@ -101,7 +101,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
                     onClick={() => setCategory('ux')}
                     className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[11px] font-bold transition-all ${
                       category === 'ux'
-                        ? 'border-[#7000FF] bg-[#7000FF]/20 text-white'
+                        ? 'border-[#6366F1] bg-[#6366F1]/20 text-white'
                         : 'border-white/10 bg-white/[0.03] text-white/40'
                     }`}
                   >
@@ -129,17 +129,13 @@ export default function FeedbackModal({ isOpen, onClose }) {
                   placeholder="Share feedback on ride requests, map experience, authentication, or UI feel..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-[12.5px] text-white placeholder-white/50 focus:border-[#00F0FF] focus:outline-none"
+                  className="mt-1 w-full rounded-2xl border border-white/10 bg-white/[0.05] p-3 text-[12.5px] text-white placeholder-white/50 focus:border-[#38BDF8] focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
-                className="flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-extrabold text-[#04140F] transition-transform active:scale-95"
-                style={{
-                  background: 'linear-gradient(90deg,#00F0FF,#3DFFC2)',
-                  boxShadow: '0 0 20px rgba(0,240,255,0.4)',
-                }}
+                className="flex items-center justify-center gap-2 rounded-xl bg-[#38BDF8] py-3 text-[13px] font-extrabold text-[#061018] transition-transform active:scale-95"
               >
                 <Send size={15} /> Submit Feedback
               </button>

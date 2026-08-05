@@ -65,14 +65,14 @@ export default function AuthModal({ isOpen, onClose }) {
           initial={{ opacity: 0, scale: 0.94, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
-          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-[0_0_50px_rgba(0,240,255,0.18)]"
+          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-2xl shadow-black/50"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <img
                 src="/logo.png"
                 alt="Rush Logo"
-                className="h-9 w-9 rounded-xl object-cover shadow-[0_0_18px_rgba(0,240,255,0.4)] border border-white/20"
+                className="h-9 w-9 rounded-xl object-cover border border-white/20"
               />
               <div>
                 <h2 className="text-lg font-extrabold tracking-wide text-white">Rider & Driver Auth</h2>
@@ -95,7 +95,7 @@ export default function AuthModal({ isOpen, onClose }) {
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-[#3DFFC2]/40 bg-[#3DFFC2]/15 p-2.5 text-[12px] font-bold text-[#3DFFC2]"
+              className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-[#34D399]/40 bg-[#34D399]/15 p-2.5 text-[12px] font-bold text-[#34D399]"
             >
               <ShieldCheck size={16} /> {toastMessage}
             </motion.div>
@@ -110,11 +110,11 @@ export default function AuthModal({ isOpen, onClose }) {
               }}
               className={`flex items-center justify-center gap-1.5 rounded-xl py-2 transition-all ${
                 tab === 'presets'
-                  ? 'bg-gradient-to-r from-[#00F0FF]/20 to-[#7000FF]/20 border border-[#00F0FF]/40 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                  ? 'bg-[#38BDF8]/15 border border-[#38BDF8]/40 text-white'
                   : 'text-white/45 hover:text-white'
               }`}
             >
-              <Zap size={14} className={tab === 'presets' ? 'text-[#00F0FF]' : ''} /> Quick Presets
+              <Zap size={14} className={tab === 'presets' ? 'text-[#38BDF8]' : ''} /> Quick Presets
             </button>
             <button
               onClick={() => {
@@ -123,11 +123,11 @@ export default function AuthModal({ isOpen, onClose }) {
               }}
               className={`flex items-center justify-center gap-1.5 rounded-xl py-2 transition-all ${
                 tab === 'custom'
-                  ? 'bg-gradient-to-r from-[#00F0FF]/20 to-[#7000FF]/20 border border-[#00F0FF]/40 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                  ? 'bg-[#38BDF8]/15 border border-[#38BDF8]/40 text-white'
                   : 'text-white/45 hover:text-white'
               }`}
             >
-              <User size={14} className={tab === 'custom' ? 'text-[#00F0FF]' : ''} /> Sign Up / Login
+              <User size={14} className={tab === 'custom' ? 'text-[#38BDF8]' : ''} /> Sign Up / Login
             </button>
           </div>
 
@@ -141,19 +141,16 @@ export default function AuthModal({ isOpen, onClose }) {
               {/* Rider Preset Card */}
               <button
                 onClick={handlePresetRider}
-                className="group relative flex items-center justify-between rounded-2xl border border-[#00F0FF]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#00F0FF] hover:bg-white/[0.08] active:scale-[0.98]"
+                className="group relative flex items-center justify-between rounded-2xl border border-[#38BDF8]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#38BDF8] hover:bg-white/[0.08] active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3.5">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white shadow-lg"
-                    style={{ background: 'linear-gradient(135deg,#00F0FF,#4770FF)' }}
-                  >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#38BDF8] font-bold text-[#04140F]">
                     AR
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] font-extrabold text-white">Alex Rivera</span>
-                      <span className="rounded-full bg-[#00F0FF]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#00F0FF]">
+                      <span className="rounded-full bg-[#38BDF8]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#38BDF8]">
                         Rider Profile
                       </span>
                     </div>
@@ -162,25 +159,22 @@ export default function AuthModal({ isOpen, onClose }) {
                     </p>
                   </div>
                 </div>
-                <ArrowRight size={18} className="text-[#00F0FF] transition-transform group-hover:translate-x-1" />
+                <ArrowRight size={18} className="text-[#38BDF8] transition-transform group-hover:translate-x-1" />
               </button>
 
               {/* Driver Preset Card */}
               <button
                 onClick={handlePresetDriver}
-                className="group relative flex items-center justify-between rounded-2xl border border-[#7000FF]/40 bg-white/[0.04] p-4 text-left transition-all hover:border-[#7000FF] hover:bg-white/[0.08] active:scale-[0.98]"
+                className="group relative flex items-center justify-between rounded-2xl border border-[#34D399]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#34D399] hover:bg-white/[0.08] active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3.5">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl font-bold text-white shadow-lg"
-                    style={{ background: 'linear-gradient(135deg,#7000FF,#3DFFC2)' }}
-                  >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#34D399] font-bold text-[#04140F]">
                     MV
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] font-extrabold text-white">Marcus Vance</span>
-                      <span className="rounded-full bg-[#7000FF]/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#3DFFC2]">
+                      <span className="rounded-full bg-[#34D399]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#34D399]">
                         Driver Profile
                       </span>
                     </div>
@@ -189,7 +183,7 @@ export default function AuthModal({ isOpen, onClose }) {
                     </p>
                   </div>
                 </div>
-                <ArrowRight size={18} className="text-[#3DFFC2] transition-transform group-hover:translate-x-1" />
+                <ArrowRight size={18} className="text-[#34D399] transition-transform group-hover:translate-x-1" />
               </button>
             </div>
           ) : (
@@ -205,7 +199,7 @@ export default function AuthModal({ isOpen, onClose }) {
                     }}
                     className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[12px] font-bold transition-all ${
                       role === 'passenger'
-                        ? 'border-[#00F0FF] bg-[#00F0FF]/10 text-white shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                        ? 'border-[#38BDF8] bg-[#38BDF8]/10 text-white'
                         : 'border-white/10 bg-white/[0.03] text-white/40'
                     }`}
                   >
@@ -219,7 +213,7 @@ export default function AuthModal({ isOpen, onClose }) {
                     }}
                     className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[12px] font-bold transition-all ${
                       role === 'driver'
-                        ? 'border-[#3DFFC2] bg-[#3DFFC2]/10 text-white shadow-[0_0_12px_rgba(61,255,194,0.2)]'
+                        ? 'border-[#34D399] bg-[#34D399]/10 text-white'
                         : 'border-white/10 bg-white/[0.03] text-white/40'
                     }`}
                   >
@@ -236,7 +230,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   placeholder="e.g. Jordan Lee"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[16px] text-white placeholder-white/40 focus:border-[#00F0FF] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[16px] text-white placeholder-white/40 focus:border-[#38BDF8] focus:outline-none"
                 />
               </div>
 
@@ -248,17 +242,13 @@ export default function AuthModal({ isOpen, onClose }) {
                   placeholder="rider@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[16px] text-white placeholder-white/40 focus:border-[#00F0FF] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-[16px] text-white placeholder-white/40 focus:border-[#38BDF8] focus:outline-none"
                 />
               </div>
 
               <button
                 type="submit"
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13.5px] font-extrabold text-[#04140F] transition-transform active:scale-[0.98]"
-                style={{
-                  background: 'linear-gradient(90deg,#00F0FF,#3DFFC2)',
-                  boxShadow: '0 0 20px rgba(0,240,255,0.4)',
-                }}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#38BDF8] py-3 text-[13.5px] font-extrabold text-[#061018] transition-transform active:scale-[0.98]"
               >
                 <UserCheck size={16} /> Save & Enter App
               </button>
@@ -269,7 +259,7 @@ export default function AuthModal({ isOpen, onClose }) {
           {user && (
             <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-3.5">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#3DFFC2] animate-pulse" />
+                <span className="h-2 w-2 rounded-full bg-[#34D399] animate-pulse" />
                 <span className="text-[11.5px] font-medium text-white/60">
                   Logged in as <strong className="text-white">{user.name}</strong> ({user.role})
                 </span>
