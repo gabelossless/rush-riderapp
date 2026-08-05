@@ -50,7 +50,7 @@ export const PRESET_DESTINATIONS = [
     eta: '8 min',
     distance: '2.4 mi',
     icon: Building2,
-    tint: '#00F0FF',
+    tint: '#38BDF8',
     coords: { x: 322, y: 92 },
   },
   {
@@ -60,7 +60,7 @@ export const PRESET_DESTINATIONS = [
     eta: '18 min',
     distance: '9.1 mi',
     icon: Plane,
-    tint: '#7000FF',
+    tint: '#6366F1',
     coords: { x: 350, y: 40 },
   },
   {
@@ -70,7 +70,7 @@ export const PRESET_DESTINATIONS = [
     eta: '6 min',
     distance: '1.8 mi',
     icon: Landmark,
-    tint: '#3DFFC2',
+    tint: '#34D399',
     coords: { x: 170, y: 200 },
   },
   {

@@ -24,14 +24,14 @@ class MapErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center bg-[#0A0D15] text-white">
-          <AlertTriangle className="h-10 w-10 text-[#00F0FF] mb-3 animate-pulse" />
+          <AlertTriangle className="h-10 w-10 text-[#38BDF8] mb-3 animate-pulse" />
           <h4 className="text-sm font-bold">Map Engine Re-initializing</h4>
           <p className="mt-1 text-xs text-white/50 max-w-[240px]">
             Recovering vector view state automatically...
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="mt-4 flex items-center gap-2 rounded-xl bg-[#00F0FF]/20 border border-[#00F0FF]/40 px-4 py-2 text-xs font-bold text-[#00F0FF] hover:bg-[#00F0FF]/30 transition-all"
+            className="mt-4 flex items-center gap-2 rounded-xl bg-[#38BDF8]/20 border border-[#38BDF8]/40 px-4 py-2 text-xs font-bold text-[#38BDF8] hover:bg-[#38BDF8]/30 transition-all"
           >
             <RefreshCw className="h-3.5 w-3.5" /> Reload View
           </button>
@@ -182,16 +182,16 @@ function MapEngineContent({
         >
           <defs>
             <linearGradient id="routeGrad" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%" stopColor="#00F0FF" />
-              <stop offset="100%" stopColor="#8B3BFF" />
+              <stop offset="0%" stopColor="#38BDF8" />
+              <stop offset="100%" stopColor="#818CF8" />
             </linearGradient>
             <radialGradient id="glowCyan" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#00F0FF" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#00F0FF" stopOpacity="0" />
+              <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
             </radialGradient>
             <radialGradient id="glowViolet" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#7000FF" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#7000FF" stopOpacity="0" />
+              <stop offset="0%" stopColor="#6366F1" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
             </radialGradient>
             <radialGradient id="vignette" cx="50%" cy="45%" r="75%">
               <stop offset="55%" stopColor="#000000" stopOpacity="0" />
@@ -265,25 +265,25 @@ function MapEngineContent({
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 strokeDasharray={len ? `${len * clamp01(carProgress)} ${len}` : '0 1000'}
-                style={{ filter: 'drop-shadow(0 0 8px rgba(0,240,255,0.85))' }}
+                style={{ filter: 'drop-shadow(0 0 8px rgba(56,189,248,0.85))' }}
               />
             </g>
           )}
 
           {/* Pickup Pin */}
           <g transform={`translate(${safePickup.x},${safePickup.y})`}>
-            <circle r="30" fill="#00F0FF" opacity="0.12">
+            <circle r="30" fill="#38BDF8" opacity="0.12">
               <animate attributeName="r" values="12;32" dur="2.4s" repeatCount="indefinite" />
               <animate attributeName="opacity" values="0.3;0" dur="2.4s" repeatCount="indefinite" />
             </circle>
-            <circle r="12" fill="none" stroke="#00F0FF" strokeWidth="1.2" opacity="0.55" />
-            <circle r="5" fill="#00F0FF" style={{ filter: 'drop-shadow(0 0 6px #00F0FF)' }} />
+            <circle r="12" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity="0.55" />
+            <circle r="5" fill="#38BDF8" style={{ filter: 'drop-shadow(0 0 6px #38BDF8)' }} />
           </g>
 
           {/* Dropoff Pin */}
           {showRoute && (
             <g transform={`translate(${safeDropoff.x},${safeDropoff.y})`}>
-              <circle r="26" fill="#8B3BFF" opacity="0.15">
+              <circle r="26" fill="#818CF8" opacity="0.15">
                 <animate attributeName="r" values="10;28" dur="2.8s" begin="0.6s" repeatCount="indefinite" />
                 <animate attributeName="opacity" values="0.35;0" dur="2.8s" begin="0.6s" repeatCount="indefinite" />
               </circle>
@@ -295,7 +295,7 @@ function MapEngineContent({
                 rx="2.5"
                 fill="#A86BFF"
                 transform="rotate(45)"
-                style={{ filter: 'drop-shadow(0 0 6px #8B3BFF)' }}
+                style={{ filter: 'drop-shadow(0 0 6px #818CF8)' }}
               />
             </g>
           )}
@@ -304,7 +304,7 @@ function MapEngineContent({
           {radar && (
             <g transform={`translate(${safePickup.x},${safePickup.y})`}>
               {[0, 1, 2].map((i) => (
-                <circle key={i} r="6" fill="none" stroke="#00F0FF" strokeWidth="1.4">
+                <circle key={i} r="6" fill="none" stroke="#38BDF8" strokeWidth="1.4">
                   <animate attributeName="r" values="6;54" dur="2.2s" begin={`${i * 0.73}s`} repeatCount="indefinite" />
                   <animate attributeName="opacity" values="0.85;0" dur="2.2s" begin={`${i * 0.73}s`} repeatCount="indefinite" />
                 </circle>
@@ -315,7 +315,7 @@ function MapEngineContent({
           {/* Live Vehicle */}
           {carPos && (
             <g transform={`translate(${carPos.x},${carPos.y})`}>
-              <circle r="11" fill="#00F0FF" opacity="0.25" />
+              <circle r="11" fill="#38BDF8" opacity="0.25" />
               <rect
                 x="-7"
                 y="-5"
@@ -323,9 +323,9 @@ function MapEngineContent({
                 height="10"
                 rx="3.5"
                 fill="#0A0D15"
-                stroke="#00F0FF"
+                stroke="#38BDF8"
                 strokeWidth="1.8"
-                style={{ filter: 'drop-shadow(0 0 10px rgba(0,240,255,0.95))' }}
+                style={{ filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.95))' }}
               />
             </g>
           )}
@@ -341,21 +341,21 @@ function MapEngineContent({
               rendered invisibly behind it. */}
           {iframeStatus === 'loading' && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-20 bg-[#0A0D15] text-white">
-              <div className="h-7 w-7 rounded-full border-2 border-[#3DFFC2] border-t-transparent animate-spin mb-2" />
+              <div className="h-7 w-7 rounded-full border-2 border-[#34D399] border-t-transparent animate-spin mb-2" />
               <span className="text-[11px] font-medium text-white/70">Connecting OpenStreetMap...</span>
             </div>
           )}
 
           {iframeStatus === 'error' ? (
             <div className="flex h-full w-full flex-col items-center justify-start pt-16 p-6 text-center text-white">
-              <AlertTriangle className="h-8 w-8 text-[#3DFFC2] mb-2" />
+              <AlertTriangle className="h-8 w-8 text-[#34D399] mb-2" />
               <p className="text-xs font-bold">Real Map Unavailable</p>
               <p className="text-[11px] text-white/70 mt-1 max-w-[200px]">
                 Network connection restricted. Switched to offline Cyber Grid engine.
               </p>
               <button
                 onClick={() => setMapMode('cyber')}
-                className="mt-3 rounded-xl bg-[#3DFFC2] px-3.5 py-1.5 text-xs font-bold text-black shadow-lg"
+                className="mt-3 rounded-xl bg-[#34D399] px-3.5 py-1.5 text-xs font-bold text-black shadow-lg"
               >
                 Use Cyber Grid Engine
               </button>
@@ -374,7 +374,7 @@ function MapEngineContent({
           )}
 
           <div className="pointer-events-none absolute inset-0 bg-[#0A0D15]/40 backdrop-contrast-125" />
-          <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-xl border border-[#3DFFC2]/30 bg-black/75 px-3 py-1.5 text-[11px] font-bold text-[#3DFFC2]">
+          <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-xl border border-[#34D399]/30 bg-black/75 px-3 py-1.5 text-[11px] font-bold text-[#34D399]">
             <LocateFixed size={14} /> Live OpenStreetMap Tracking Active
           </div>
         </div>
@@ -383,7 +383,7 @@ function MapEngineContent({
       {/* Tap hint overlay */}
       {onMapClick && mapMode === 'cyber' && (
         <div className="pointer-events-none absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[9.5px] font-medium text-white/50 backdrop-blur-md">
-          <Eye size={10} className="text-[#00F0FF]" /> Tap map to place pins
+          <Eye size={10} className="text-[#38BDF8]" /> Tap map to place pins
         </div>
       )}
     </div>

@@ -45,7 +45,7 @@ class RootBoundary extends Component {
               fontSize: 42,
               fontWeight: 800,
               lineHeight: 1,
-              background: 'linear-gradient(100deg,#00F0FF,#7000FF)',
+              background: 'linear-gradient(100deg,#38BDF8,#6366F1)',
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
               color: 'transparent',
@@ -56,7 +56,7 @@ class RootBoundary extends Component {
           <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>
             Something crashed on this screen. Tap reload to reinitialize.
           </p>
-          <p style={{ margin: 0, fontSize: 11, color: 'rgba(0,240,255,0.7)', maxWidth: 360, wordBreak: 'break-word' }}>
+          <p style={{ margin: 0, fontSize: 11, color: 'rgba(56,189,248,0.7)', maxWidth: 360, wordBreak: 'break-word' }}>
             {String(this.state.error && this.state.error.message)}
           </p>
           <button
@@ -70,8 +70,7 @@ class RootBoundary extends Component {
               fontSize: 14,
               cursor: 'pointer',
               color: '#061018',
-              background: 'linear-gradient(90deg,#00F0FF,#3DFFC2)',
-              boxShadow: '0 0 24px rgba(0,240,255,0.45)',
+              background: '#38BDF8',
             }}
           >
             Reload App

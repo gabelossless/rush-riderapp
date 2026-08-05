@@ -22,11 +22,11 @@ export default function HistoryModal({ isOpen, onClose }) {
           initial={{ opacity: 0, scale: 0.94, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
-          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-[0_0_50px_rgba(0,240,255,0.18)]"
+          className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-2xl shadow-black/50"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-[#00F0FF]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-[#38BDF8]">
                 <Clock size={20} />
               </span>
               <div>
@@ -57,7 +57,7 @@ export default function HistoryModal({ isOpen, onClose }) {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-[#00F0FF]/15 px-2.5 py-0.5 text-[9.5px] font-extrabold text-[#00F0FF]">
+                      <span className="rounded-full bg-[#38BDF8]/15 px-2.5 py-0.5 text-[9.5px] font-extrabold text-[#38BDF8]">
                         {trip.tier || 'Rush Express'}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
@@ -69,7 +69,7 @@ export default function HistoryModal({ isOpen, onClose }) {
 
                   <div className="mt-3 flex flex-col gap-1 text-[12px]">
                     <div className="flex items-center gap-2 text-white/90 font-semibold min-w-0">
-                      <MapPin size={13} className="text-[#00F0FF] shrink-0" /> <span className="truncate">{trip.pickup} → {trip.destination}</span>
+                      <MapPin size={13} className="text-[#38BDF8] shrink-0" /> <span className="truncate">{trip.pickup} → {trip.destination}</span>
                     </div>
                     <div className="flex items-center justify-between text-[10.5px] text-white/50 pt-1 border-t border-white/5 mt-1">
                       <span className="flex items-center gap-1 min-w-0">
