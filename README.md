@@ -27,7 +27,7 @@ Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultr
 ### 🗺️ 3. Resilient Multi-Mode Map Engine
 * **Cyber Grid Vector Engine**: Lightweight, offline-capable 60 FPS SVG map with dynamic Bezier route paths, pulse radar scans, animated vehicle telemetry, and tap-to-pin coordinate placement.
 * **Real Map (OpenStreetMap)**: Dark-mode inverted OpenStreetMap iframe layer for live geographic context.
-* **Automatic Load Protection**: Integrated React Error Boundary and network timeout fallback to ensure the map view never crashes or displays a blank screen.
+* **Automatic Load Protection**: Integrated React Error Boundary and a network reachability preflight check (rather than trusting the iframe's own load events, which fire even on a blocked connection) to ensure the map view never crashes or displays a blank screen.
 
 ### 📱 4. Native-Grade Mobile PWA UX
 * **Tactile Haptic Vibrations**: Haptic feedback (`navigator.vibrate`) on tab switches, ride option selection, preset taps, and wallet transactions.

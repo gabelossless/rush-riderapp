@@ -4,6 +4,19 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    // Bind to 0.0.0.0 (not just localhost) and accept any Host header so the
+    // dev server is reachable through cloud/remote preview proxies (Claude
+    // Code on the web, Codespaces, etc.) — without this, requests through a
+    // forwarded preview domain are rejected and the app never mounts,
+    // showing a black screen.
+    host: true,
+    allowedHosts: true,
+  },
+  preview: {
+    host: true,
+    allowedHosts: true,
+  },
   plugins: [
     react(),
     VitePWA({
