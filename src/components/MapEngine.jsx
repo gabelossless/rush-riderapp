@@ -101,14 +101,29 @@ function MapEngineContent({
     setLen(fallbackLen)
   }, [routePath, fallbackLen, showRoute])
 
-  // Iframe timeout safety for Real Map view
+  // Network preflight check for Real Map view.
+  // A blocked/reset connection to a cross-origin host still lets the iframe
+  // fire `onLoad` (the browser "loads" its own internal error page) — same-origin
+  // policy also blocks us from inspecting that page afterwards to tell the
+  // difference. So instead of trusting the iframe's own load events, probe
+  // reachability with a real fetch() first: a blocked network genuinely
+  // rejects the fetch promise, which lets us skip ever mounting the iframe
+  // and show the offline Cyber Grid fallback instead of a blank/black pane.
   useEffect(() => {
     if (mapMode !== 'real') return
     setIframeStatus('loading')
-    const timer = setTimeout(() => {
-      setIframeStatus((prev) => (prev === 'loading' ? 'loaded' : prev))
-    }, 3500)
-    return () => clearTimeout(timer)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 4000)
+
+    fetch('https://tile.openstreetmap.org/0/0/0.png', { mode: 'no-cors', signal: controller.signal })
+      .then(() => setIframeStatus('loaded'))
+      .catch(() => setIframeStatus('error'))
+      .finally(() => clearTimeout(timer))
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
   }, [mapMode])
 
   // Interpolated car position along Bezier route with math fallback
@@ -210,7 +225,7 @@ function MapEngineContent({
           <ellipse cx="60" cy="400" rx="240" ry="190" fill="url(#glowCyan)" />
 
           {/* Street Grid */}
-          <g stroke="#151C2A" strokeLinecap="round">
+          <g stroke="#33456B" strokeLinecap="round">
             <line x1="0" y1="120" x2="400" y2="120" strokeWidth="7" />
             <line x1="0" y1="200" x2="400" y2="200" strokeWidth="9" />
             <line x1="0" y1="280" x2="400" y2="280" strokeWidth="6" />
@@ -223,7 +238,7 @@ function MapEngineContent({
           </g>
 
           {/* City Blocks */}
-          <g fill="#0E1420" stroke="#151D2B" strokeWidth="1.5">
+          <g fill="#151F32" stroke="#35486E" strokeWidth="1.5">
             <rect x="8" y="8" width="64" height="104" rx="10" />
             <rect x="88" y="8" width="74" height="60" rx="10" />
             <rect x="258" y="8" width="74" height="60" rx="10" />
@@ -242,7 +257,7 @@ function MapEngineContent({
           </g>
 
           {/* Fine Grid Overlay */}
-          <g stroke="#1A2336" strokeWidth="0.6" opacity="0.4">
+          <g stroke="#2C3E5F" strokeWidth="0.6" opacity="0.6">
             {Array.from({ length: 19 }).map((_, i) => (
               <line key={`v${i}`} x1={20 + i * 20} y1="0" x2={20 + i * 20} y2="470" />
             ))}
@@ -340,15 +355,19 @@ function MapEngineContent({
       ) : (
         /* Real Map OpenStreetMap Dark Mode Frame with Load Protection */
         <div className="relative h-full w-full bg-[#0A0D15]">
+          {/* Status content is anchored near the top, not vertically centered —
+              the pickup/destination card floats over the lower half of the
+              map, so anything centered in the full-height container would be
+              rendered invisibly behind it. */}
           {iframeStatus === 'loading' && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0A0D15] text-white">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-20 bg-[#0A0D15] text-white">
               <div className="h-7 w-7 rounded-full border-2 border-[#3DFFC2] border-t-transparent animate-spin mb-2" />
               <span className="text-[11px] font-medium text-white/70">Connecting OpenStreetMap...</span>
             </div>
           )}
 
           {iframeStatus === 'error' ? (
-            <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-white">
+            <div className="flex h-full w-full flex-col items-center justify-start pt-16 p-6 text-center text-white">
               <AlertTriangle className="h-8 w-8 text-[#3DFFC2] mb-2" />
               <p className="text-xs font-bold">Real Map Unavailable</p>
               <p className="text-[11px] text-white/70 mt-1 max-w-[200px]">
@@ -370,7 +389,6 @@ function MapEngineContent({
               scrolling="no"
               src="https://www.openstreetmap.org/export/embed.html?bbox=-122.435%2C37.765%2C-122.395%2C37.795&amp;layer=mapnik"
               className="h-full w-full invert contrast-[1.25] hue-rotate-180 brightness-[0.7]"
-              onLoad={() => setIframeStatus('loaded')}
               onError={() => setIframeStatus('error')}
             />
           )}

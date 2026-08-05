@@ -28,11 +28,15 @@ export function TripProvider({ children }) {
   // Sync state across browser tabs/windows
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === TRIP_STATE_KEY) {
-        setCurrentTrip(e.newValue ? JSON.parse(e.newValue) : null)
-      }
-      if (e.key === TRIP_HISTORY_KEY) {
-        setTripHistory(e.newValue ? JSON.parse(e.newValue) : INITIAL_TRIP_HISTORY)
+      try {
+        if (e.key === TRIP_STATE_KEY) {
+          setCurrentTrip(e.newValue ? JSON.parse(e.newValue) : null)
+        }
+        if (e.key === TRIP_HISTORY_KEY) {
+          setTripHistory(e.newValue ? JSON.parse(e.newValue) : INITIAL_TRIP_HISTORY)
+        }
+      } catch (err) {
+        console.error('Failed to parse cross-tab storage update:', err)
       }
     }
     window.addEventListener('storage', handleStorageChange)

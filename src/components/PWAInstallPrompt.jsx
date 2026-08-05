@@ -20,7 +20,12 @@ export default function PWAInstallPrompt() {
     if (isInStandalone) return
 
     // 2. Check if user dismissed prompt recently
-    const isDismissed = localStorage.getItem('rush_pwa_install_dismissed')
+    let isDismissed = false
+    try {
+      isDismissed = !!localStorage.getItem('rush_pwa_install_dismissed')
+    } catch {
+      // localStorage unavailable (e.g. private browsing, sandboxed iframe) — ignore
+    }
     if (isDismissed) return
 
     // 3. Detect iOS Safari
@@ -65,7 +70,11 @@ export default function PWAInstallPrompt() {
   const handleDismiss = () => {
     triggerHaptic('light')
     setShowPrompt(false)
-    localStorage.setItem('rush_pwa_install_dismissed', 'true')
+    try {
+      localStorage.setItem('rush_pwa_install_dismissed', 'true')
+    } catch {
+      // localStorage unavailable — dismissal just won't persist across reloads
+    }
   }
 
   if (isStandalone || !showPrompt) return null
