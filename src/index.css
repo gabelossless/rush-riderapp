@@ -92,19 +92,6 @@
     background-clip: text;
     color: transparent;
   }
-  .grid-bg {
-    background-image:
-      linear-gradient(rgba(120, 140, 200, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(120, 140, 200, 0.05) 1px, transparent 1px);
-    background-size: 42px 42px;
-  }
-
-  /* Safe Area Insets are handled inline via env(safe-area-inset-*) utilities. */
-  @media (display-mode: standalone) {
-    .pwa-statusbar {
-      display: none;
-    }
-  }
 }
 
 

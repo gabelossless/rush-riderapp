@@ -2,22 +2,17 @@ import { useEffect, useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
-  Battery,
   Car,
   Check,
   ChevronLeft,
   CircleCheck,
-  CircleDollarSign,
   Clock,
   Home,
   MessageSquare,
   Radio,
-  ShieldCheck,
-  Signal,
   Sparkles,
   Star,
   Wallet,
-  Wifi,
   Zap,
 } from 'lucide-react'
 
@@ -39,19 +34,6 @@ const DRIVER_PCT = 0.88
 /* ------------------------------------------------------------------ */
 /*  Small UI atoms                                                     */
 /* ------------------------------------------------------------------ */
-
-function StatusBar() {
-  return (
-    <div className="pwa-statusbar flex items-center justify-between px-6 pt-[max(env(safe-area-inset-top),12px)] pb-1 text-[11px] font-semibold text-white/70">
-      <span>9:41</span>
-      <div className="flex items-center gap-1.5">
-        <Wifi size={13} strokeWidth={2.4} />
-        <Signal size={13} strokeWidth={2.4} />
-        <Battery size={15} strokeWidth={2} />
-      </div>
-    </div>
-  )
-}
 
 function Avatar({ size = 44, initials = 'US', className = '' }) {
   return (
@@ -130,41 +112,43 @@ function Header({ view, setView, onOpenAuth, onOpenWallet }) {
   const { user } = useAuth()
 
   return (
-    <header className="glass-strong sticky top-0 z-40 flex items-center justify-between border-b border-white/8 px-4 py-2.5">
-      <div className="flex items-center gap-2">
-        <img
-          src="/logo.png"
-          alt="Rush Logo"
-          className="h-7 w-7 rounded-lg object-cover border border-white/15"
-        />
-        <p className="text-[13px] font-extrabold leading-none tracking-wide text-white">RUSH</p>
-      </div>
+    <header className="glass-strong sticky top-0 z-40 border-b border-white/8 pt-[max(env(safe-area-inset-top),0px)]">
+      <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <img
+            src="/logo.png"
+            alt="Rush Logo"
+            className="h-7 w-7 rounded-lg object-cover border border-white/15"
+          />
+          <p className="text-[13px] font-extrabold leading-none tracking-wide text-white">RUSH</p>
+        </div>
 
-      <div className="flex items-center gap-1.5">
-        {/* Wallet Balance */}
-        <button
-          onClick={onOpenWallet}
-          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] font-bold text-white/80 transition-colors hover:text-white"
-        >
-          <Wallet size={13} className="text-[#38BDF8]" />
-          {usd(user?.walletBalance)}
-        </button>
-
-        <RoleSwitch value={view} onChange={setView} />
-
-        {/* User Account Avatar / Auth Button */}
-        {user ? (
-          <button onClick={onOpenAuth} className="shrink-0">
-            <Avatar size={30} initials={user.avatar || 'US'} />
-          </button>
-        ) : (
+        <div className="flex items-center gap-1.5">
+          {/* Wallet Balance */}
           <button
-            onClick={onOpenAuth}
-            className="rounded-full border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-3 py-1.5 text-[11px] font-bold text-[#38BDF8]"
+            onClick={onOpenWallet}
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] font-bold text-white/80 transition-colors hover:text-white"
           >
-            Log In
+            <Wallet size={13} className="text-[#38BDF8]" />
+            {usd(user?.walletBalance)}
           </button>
-        )}
+
+          <RoleSwitch value={view} onChange={setView} />
+
+          {/* User Account Avatar / Auth Button */}
+          {user ? (
+            <button onClick={onOpenAuth} className="shrink-0">
+              <Avatar size={30} initials={user.avatar || 'US'} />
+            </button>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="rounded-full border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-3 py-1.5 text-[11px] font-bold text-[#38BDF8]"
+            >
+              Log In
+            </button>
+          )}
+        </div>
       </div>
     </header>
   )
@@ -172,8 +156,8 @@ function Header({ view, setView, onOpenAuth, onOpenWallet }) {
 
 function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
   return (
-    <div className="relative z-30 glass-strong border-t border-white/8 px-6 pb-[max(env(safe-area-inset-bottom),16px)] pt-2.5">
-      <div className="flex items-center justify-between">
+    <div className="relative z-30 glass-strong border-t border-white/8 pb-[max(env(safe-area-inset-bottom),16px)] pt-2.5">
+      <div className="mx-auto flex max-w-lg items-center justify-between px-6">
         <button
           onClick={() => triggerHaptic('click')}
           className="flex flex-col items-center gap-1 text-[#38BDF8] active:scale-95 transition-transform"
@@ -362,17 +346,19 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     <div className="relative h-full">
       {/* Dynamic Demo Banner Notification */}
       {demoNotification && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          className="absolute top-3 inset-x-3 z-30 flex items-center justify-between rounded-2xl border border-[#34D399]/40 bg-[#0A0D15]/90 p-3 text-[12px] font-bold text-[#34D399] shadow-xl backdrop-blur-md"
-        >
-          <div className="flex items-center gap-2">
-            <Sparkles size={16} />
-            <span>{demoNotification}</span>
-          </div>
-        </motion.div>
+        <div className="absolute inset-x-0 top-3 z-30 flex justify-center px-3">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="flex w-full max-w-lg items-center justify-between rounded-2xl border border-[#34D399]/40 bg-[#0A0D15]/90 p-3 text-[12px] font-bold text-[#34D399] shadow-xl backdrop-blur-md"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} />
+              <span>{demoNotification}</span>
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* Interactive Map */}
@@ -395,9 +381,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="absolute inset-x-0 bottom-0 z-20"
+            className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
           >
-            <div className="glass mx-3 mb-3 rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
+            <div className="glass w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
               <LocationSearch
                 pickup={pickup}
                 destination={destination}
@@ -425,9 +411,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
-            className="absolute inset-x-0 bottom-0 z-20"
+            className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
           >
-            <div className="glass mx-3 mb-3 max-h-[500px] overflow-y-auto rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50 no-scrollbar">
+            <div className="glass w-full max-w-lg max-h-[500px] overflow-y-auto rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50 no-scrollbar">
               <div className="mb-3 flex items-center gap-3">
                 <button
                   onClick={() => {
@@ -582,9 +568,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
-            className="absolute inset-x-0 bottom-0 z-20"
+            className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
           >
-            <div className="glass mx-3 mb-3 rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
+            <div className="glass w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
               <div className="mb-3 flex items-center justify-between">
                 <span className="rounded-full bg-[#38BDF8]/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#38BDF8]">
                   {currentTrip.status === 'ACCEPTED' ? 'Driver En Route' : 'Trip In Progress'}
@@ -803,7 +789,7 @@ function DriverViewContent({ onImmersiveChange }) {
         <MapEngine showRoute={Boolean(currentTrip)} radar={online && !currentTrip} />
       </div>
 
-      <div className="relative z-10 min-h-full p-3">
+      <div className="relative z-10 mx-auto min-h-full w-full max-w-lg p-3">
         {/* Status card */}
         <div className="glass rounded-3xl border border-white/10 p-4 shadow-2xl">
           <div className="flex items-center justify-between">
@@ -919,72 +905,13 @@ function DriverViewContent({ onImmersiveChange }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Desktop Investor Overview Panel                                    */
+/*  App Shell — fills the real browser viewport. No fake phone bezel:  */
+/*  the map goes full-bleed and the interactive panels (header, sheet, */
+/*  tab bar) cap themselves to a comfortable reading width so they      */
+/*  don't stretch edge-to-edge on a wide desktop window.                */
 /* ------------------------------------------------------------------ */
 
-function InvestorPanel({ onOpenAuth }) {
-  const { user } = useAuth()
-
-  return (
-    <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} className="hidden w-[380px] lg:block">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="rounded-full border border-[#34D399]/40 bg-[#34D399]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#34D399]">
-          Series A · Interactive Tester Hub
-        </span>
-      </div>
-      <h1 className="text-5xl font-extrabold leading-[1.05] tracking-tight text-white">
-        Rideshare,
-        <br />
-        <span className="text-gradient">reimagined.</span>
-      </h1>
-      <p className="mt-4 max-w-[340px] text-[13.5px] font-medium leading-relaxed text-white/60">
-        Test authentication, location search, live driver matching, custom SVG/Real OpenStreetMap views, and 88% driver payouts.
-      </p>
-
-      <div className="mt-5 flex flex-col gap-2.5">
-        <div className="glass flex items-center gap-3.5 rounded-2xl border border-white/10 p-3.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#34D399]/15 text-[#34D399]">
-            <CircleDollarSign size={20} />
-          </span>
-          <div>
-            <p className="text-[17px] font-extrabold text-white">88% Driver Payout</p>
-            <p className="text-[11px] font-medium text-white/50">FairFare transparent pricing model</p>
-          </div>
-        </div>
-
-        <div className="glass flex items-center gap-3.5 rounded-2xl border border-white/10 p-3.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#38BDF8]/15 text-[#38BDF8]">
-            <Zap size={20} />
-          </span>
-          <div>
-            <p className="text-[17px] font-extrabold text-white">Cross-Role Sync</p>
-            <p className="text-[11px] font-medium text-white/50">Rider requests appear on Driver screen live</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-[11.5px] text-white/60">
-        <ShieldCheck size={18} className="text-[#38BDF8]" />
-        <div>
-          <span>Logged in as: </span>
-          <strong className="text-white">{user?.name}</strong> ({user?.role})
-        </div>
-        <button
-          onClick={onOpenAuth}
-          className="ml-auto rounded-lg border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-2.5 py-1 text-[10.5px] font-bold text-[#38BDF8]"
-        >
-          Switch Profile
-        </button>
-      </div>
-    </motion.div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Phone Frame Container                                              */
-/* ------------------------------------------------------------------ */
-
-function PhoneFrame({
+function AppShell({
   view,
   setView,
   isAuthOpen,
@@ -1013,45 +940,38 @@ function PhoneFrame({
   }, [view])
 
   return (
-    <div className="relative h-[100dvh] w-full max-h-none sm:h-[820px] sm:max-h-[calc(100vh-64px)] sm:w-[410px]">
-      <div
-        className="pointer-events-none absolute -inset-6 hidden rounded-[3.5rem] opacity-15 blur-3xl sm:block"
-        style={{ background: 'rgba(56,189,248,0.5)' }}
+    <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-void">
+      <Header
+        view={view}
+        setView={setView}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenWallet={() => setIsWalletOpen(true)}
       />
-      <div className="relative flex h-full w-full flex-col overflow-hidden bg-void shadow-2xl sm:rounded-[2.6rem] sm:border sm:border-white/15">
-        <StatusBar />
-        <Header
-          view={view}
-          setView={setView}
-          onOpenAuth={() => setIsAuthOpen(true)}
-          onOpenWallet={() => setIsWalletOpen(true)}
-        />
 
-        <main className="relative flex-1 overflow-hidden">
-          {view === 'passenger' ? (
-            <PassengerViewContent onOpenWallet={() => setIsWalletOpen(true)} onImmersiveChange={setImmersive} />
-          ) : (
-            <DriverViewContent onImmersiveChange={setImmersive} />
-          )}
-        </main>
-
-        {/* Hidden while a ride is actively being searched/tracked/wrapped up —
-            real trip-tracking screens are map + sheet only, no persistent tab
-            bar competing for attention. */}
-        {!immersive && (
-          <BottomNav
-            onOpenWallet={() => setIsWalletOpen(true)}
-            onOpenHistory={() => setIsHistoryOpen(true)}
-            onOpenFeedback={() => setIsFeedbackOpen(true)}
-          />
+      <main className="relative flex-1 overflow-hidden">
+        {view === 'passenger' ? (
+          <PassengerViewContent onOpenWallet={() => setIsWalletOpen(true)} onImmersiveChange={setImmersive} />
+        ) : (
+          <DriverViewContent onImmersiveChange={setImmersive} />
         )}
+      </main>
 
-        {/* Modals */}
-        <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-        <WalletModal isOpen={isWalletOpen} onClose={() => setIsWalletOpen(false)} />
-        <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
-        <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
-      </div>
+      {/* Hidden while a ride is actively being searched/tracked/wrapped up —
+          real trip-tracking screens are map + sheet only, no persistent tab
+          bar competing for attention. */}
+      {!immersive && (
+        <BottomNav
+          onOpenWallet={() => setIsWalletOpen(true)}
+          onOpenHistory={() => setIsHistoryOpen(true)}
+          onOpenFeedback={() => setIsFeedbackOpen(true)}
+        />
+      )}
+
+      {/* Modals */}
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <WalletModal isOpen={isWalletOpen} onClose={() => setIsWalletOpen(false)} />
+      <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
+      <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </div>
   )
 }
@@ -1070,35 +990,19 @@ export default function App() {
   return (
     <AuthProvider>
       <TripProvider>
-        <div className="relative min-h-screen overflow-hidden bg-void font-sans">
-          {/* Ambient Background — subtle, not a light show */}
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-0 grid-bg opacity-25" />
-            <div
-              className="absolute -left-40 top-0 h-[560px] w-[560px] rounded-full opacity-10 blur-3xl"
-              style={{ background: 'radial-gradient(circle,#38BDF8,transparent 65%)' }}
-            />
-            <div
-              className="absolute -right-40 bottom-0 h-[620px] w-[620px] rounded-full opacity-10 blur-3xl"
-              style={{ background: 'radial-gradient(circle,#6366F1,transparent 65%)' }}
-            />
-          </div>
-
-          <div className="relative z-10 flex min-h-screen items-center justify-center gap-14 p-0 sm:px-6 sm:py-8">
-            <InvestorPanel onOpenAuth={() => setIsAuthOpen(true)} />
-            <PhoneFrame
-              view={view}
-              setView={setView}
-              isAuthOpen={isAuthOpen}
-              setIsAuthOpen={setIsAuthOpen}
-              isWalletOpen={isWalletOpen}
-              setIsWalletOpen={setIsWalletOpen}
-              isHistoryOpen={isHistoryOpen}
-              setIsHistoryOpen={setIsHistoryOpen}
-              isFeedbackOpen={isFeedbackOpen}
-              setIsFeedbackOpen={setIsFeedbackOpen}
-            />
-          </div>
+        <div className="relative h-[100dvh] w-full overflow-hidden bg-void font-sans">
+          <AppShell
+            view={view}
+            setView={setView}
+            isAuthOpen={isAuthOpen}
+            setIsAuthOpen={setIsAuthOpen}
+            isWalletOpen={isWalletOpen}
+            setIsWalletOpen={setIsWalletOpen}
+            isHistoryOpen={isHistoryOpen}
+            setIsHistoryOpen={setIsHistoryOpen}
+            isFeedbackOpen={isFeedbackOpen}
+            setIsFeedbackOpen={setIsFeedbackOpen}
+          />
           <PWAInstallPrompt />
         </div>
       </TripProvider>
