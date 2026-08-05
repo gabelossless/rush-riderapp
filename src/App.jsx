@@ -329,7 +329,7 @@ function MapCanvas({ carProgress = 0, radar = false, showRoute = false }) {
 
 function StatusBar() {
   return (
-    <div className="flex items-center justify-between px-6 pt-3 pb-1 text-[11px] font-semibold text-white/70">
+    <div className="pwa-statusbar flex items-center justify-between px-6 pt-[max(env(safe-area-inset-top),12px)] pb-1 text-[11px] font-semibold text-white/70">
       <span>9:41</span>
       <div className="flex items-center gap-1.5">
         <Wifi size={13} strokeWidth={2.4} />
@@ -442,7 +442,7 @@ function BottomNav() {
     { icon: User, label: 'Profile', active: false },
   ]
   return (
-    <div className="relative z-30 glass-strong border-t border-white/8 px-6 pb-5 pt-2.5">
+    <div className="relative z-30 glass-strong border-t border-white/8 px-6 pb-[max(env(safe-area-inset-bottom),20px)] pt-2.5">
       <div className="flex items-center justify-between">
         {items.map((it) => {
           const Icon = it.icon

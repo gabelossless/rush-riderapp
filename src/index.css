@@ -72,4 +72,10 @@
       linear-gradient(90deg, rgba(120, 140, 200, 0.06) 1px, transparent 1px);
     background-size: 42px 42px;
   }
+
+  @media (display-mode: standalone) {
+    .pwa-statusbar {
+      display: none;
+    }
+  }
 }
