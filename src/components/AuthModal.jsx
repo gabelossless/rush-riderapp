@@ -69,15 +69,11 @@ export default function AuthModal({ isOpen, onClose }) {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-black text-white"
-                style={{
-                  background: 'linear-gradient(135deg,#00F0FF,#7000FF)',
-                  boxShadow: '0 0 18px rgba(0,240,255,0.4)',
-                }}
-              >
-                R
-              </span>
+              <img
+                src="/logo.png"
+                alt="Rush Logo"
+                className="h-9 w-9 rounded-xl object-cover shadow-[0_0_18px_rgba(0,240,255,0.4)] border border-white/20"
+              />
               <div>
                 <h2 className="text-lg font-extrabold tracking-wide text-white">Rider & Driver Auth</h2>
                 <p className="text-[11px] font-medium text-white/50">Instant profile switching & authentication</p>

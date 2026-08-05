@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
@@ -152,13 +152,12 @@ function Header({ view, setView, onOpenAuth, onOpenWallet, onOpenHistory, onOpen
   return (
     <header className="glass-strong sticky top-0 z-40 border-b border-white/8 px-4 pb-3 pt-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-sm font-black text-white"
-            style={{ background: 'linear-gradient(135deg,#00F0FF,#7000FF)', boxShadow: '0 0 18px rgba(0,240,255,0.4)' }}
-          >
-            R
-          </span>
+        <div className="flex items-center gap-2.5">
+          <img
+            src="/logo.png"
+            alt="Rush Logo"
+            className="h-8 w-8 rounded-xl object-cover shadow-[0_0_15px_rgba(0,240,255,0.4)] border border-white/20"
+          />
           <div>
             <p className="text-[13px] font-extrabold leading-none tracking-wide text-white">RUSH</p>
             <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#3DFFC2]">
@@ -274,7 +273,9 @@ function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
 
 function PassengerViewContent({ onOpenWallet }) {
   const { user, deductRiderFare } = useAuth()
-  const { currentTrip, requestRide, cancelRequest, acceptRide, startRide, completeRide } = useTrip()
+  const { currentTrip, tripHistory, requestRide, cancelRequest, acceptRide, startRide, completeRide, updateProgress } = useTrip()
+
+  const prevTripId = useRef(null)
 
   const [pickup, setPickup] = useState('Neon District Ave')
   const [destination, setDestination] = useState(null)
@@ -290,8 +291,21 @@ function PassengerViewContent({ onOpenWallet }) {
   const totalFare = Math.round((basePrice * currentTierObj.multiplier) * 100) / 100
 
   useEffect(() => {
+    if (currentTrip) {
+      prevTripId.current = currentTrip.id
+    }
+  }, [currentTrip])
+
+  useEffect(() => {
     if (!currentTrip) {
-      if (stage !== 'options' && stage !== 'home') {
+      if (prevTripId.current) {
+        const completedTrip = tripHistory.find(t => t.id === prevTripId.current)
+        if (completedTrip) {
+          setStage('completed')
+          deductRiderFare(completedTrip.fare)
+        }
+        prevTripId.current = null
+      } else if (stage !== 'options' && stage !== 'home' && stage !== 'completed') {
         setStage('home')
       }
     } else if (currentTrip.status === 'SEARCHING') {
@@ -299,7 +313,17 @@ function PassengerViewContent({ onOpenWallet }) {
     } else if (currentTrip.status === 'ACCEPTED' || currentTrip.status === 'IN_PROGRESS') {
       setStage('matched')
     }
-  }, [currentTrip, stage])
+  }, [currentTrip, stage, tripHistory, deductRiderFare])
+
+  useEffect(() => {
+    let timeout
+    if (currentTrip?.status === 'IN_PROGRESS') {
+      timeout = setTimeout(() => {
+        updateProgress(Math.min(1, (currentTrip.progress || 0.1) + 0.005))
+      }, 100)
+    }
+    return () => clearTimeout(timeout)
+  }, [currentTrip?.status, currentTrip?.progress, updateProgress])
 
   const handleSelectDestination = (dest) => {
     triggerHaptic('light')
@@ -318,7 +342,6 @@ function PassengerViewContent({ onOpenWallet }) {
       onOpenWallet()
       return
     }
-    deductRiderFare(totalFare)
     requestRide({
       pickup,
       destination: destination ? destination.name : 'Downtown Tech Hub',
@@ -655,6 +678,42 @@ function PassengerViewContent({ onOpenWallet }) {
             </div>
           </motion.div>
         )}
+
+        {stage === 'completed' && (
+          <motion.div
+            key="completed"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm"
+          >
+            <div className="glass-strong w-full max-w-[320px] flex flex-col items-center rounded-3xl border border-[#3DFFC2]/30 p-6 shadow-2xl text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#3DFFC2]/20 text-[#3DFFC2] mb-4">
+                <Check size={32} />
+              </div>
+              <h2 className="text-xl font-black text-white">Trip Completed</h2>
+              <p className="mt-1 text-sm font-medium text-white/60">Your fare has been processed.</p>
+              
+              <div className="mt-6 w-full">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">Add a tip?</p>
+                <div className="flex justify-between gap-2">
+                  {[2, 5, 10].map(tip => (
+                    <button key={tip} className="flex-1 rounded-xl border border-white/10 bg-white/[0.05] py-2 text-sm font-bold text-white transition-colors hover:bg-white/10 active:bg-white/20">
+                      ${tip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setStage('home')}
+                className="mt-6 w-full rounded-xl bg-gradient-to-r from-[#3DFFC2] to-[#00F0FF] py-3 text-sm font-black text-[#0A0D15] active:scale-95 transition-transform"
+              >
+                Submit Rating
+              </button>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   )
@@ -666,10 +725,27 @@ function PassengerViewContent({ onOpenWallet }) {
 
 function DriverViewContent() {
   const { user, creditDriverEarnings } = useAuth()
-  const { currentTrip, acceptRide, startRide, completeRide } = useTrip()
+  const { currentTrip, acceptRide, startRide, completeRide, cancelRequest } = useTrip()
 
   const [online, setOnline] = useState(true)
   const [toast, setToast] = useState(null)
+  const [countdown, setCountdown] = useState(10)
+
+  useEffect(() => {
+    if (currentTrip?.status === 'SEARCHING') {
+      setCountdown(10)
+    }
+  }, [currentTrip?.id, currentTrip?.status])
+
+  useEffect(() => {
+    let timer
+    if (currentTrip?.status === 'SEARCHING' && countdown > 0) {
+      timer = setTimeout(() => setCountdown(c => c - 1), 1000)
+    } else if (currentTrip?.status === 'SEARCHING' && countdown === 0) {
+      cancelRequest()
+    }
+    return () => clearTimeout(timer)
+  }, [countdown, currentTrip?.status, cancelRequest])
 
   const handleAccept = () => {
     acceptRide({
@@ -679,7 +755,6 @@ function DriverViewContent() {
       rating: 4.98,
       initials: user?.avatar || 'MV',
     })
-    startRide()
   }
 
   const handleComplete = () => {
@@ -746,7 +821,7 @@ function DriverViewContent() {
           >
             <div className="mb-2 flex items-center justify-between">
               <span className="rounded-full bg-[#00F0FF]/20 px-2.5 py-0.5 text-[9.5px] font-black uppercase text-[#00F0FF]">
-                New Trip Request!
+                New Trip Request! ({countdown}s)
               </span>
               <span className="text-[12px] font-extrabold text-[#3DFFC2]">
                 Earn {usd(currentTrip.driverFare || currentTrip.fare * 0.88)}
@@ -883,6 +958,13 @@ function PhoneFrame({
   isFeedbackOpen,
   setIsFeedbackOpen,
 }) {
+  const { user } = useAuth()
+
+  useEffect(() => {
+    if (user?.role) {
+      setView(user.role)
+    }
+  }, [user?.role, setView])
   return (
     <div className="relative h-[100dvh] w-full max-h-none sm:h-[820px] sm:max-h-[calc(100vh-64px)] sm:w-[410px]">
       <div
