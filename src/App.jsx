@@ -28,6 +28,7 @@ import MapEngine from './components/MapEngine'
 import WalletModal from './components/WalletModal'
 import HistoryModal from './components/HistoryModal'
 import FeedbackModal from './components/FeedbackModal'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 import { PREFERENCES, RIDE_TIERS } from './data/mockData'
 import { triggerHaptic } from './utils/haptics'
 
@@ -854,18 +855,29 @@ function DriverViewContent() {
             animate={{ y: 0, opacity: 1 }}
             className="glass-strong mt-3 rounded-3xl border border-white/15 p-4"
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#00F0FF]">Driving to Dropoff</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#00F0FF]">
+              {currentTrip.status === 'ACCEPTED' ? 'En Route to Pickup' : 'Driving to Dropoff'}
+            </p>
             <p className="truncate text-[14px] font-extrabold text-white">{currentTrip.destination}</p>
             <p className="text-[11px] font-medium text-[#3DFFC2]">
               Net Payout: {usd(currentTrip.driverFare || currentTrip.fare * 0.88)}
             </p>
 
-            <button
-              onClick={handleComplete}
-              className="mt-3 w-full rounded-xl border border-[#3DFFC2]/50 bg-[#3DFFC2]/15 py-3 text-[13px] font-bold text-[#3DFFC2] hover:bg-[#3DFFC2]/25"
-            >
-              Complete Ride & Claim Payout
-            </button>
+            {currentTrip.status === 'ACCEPTED' ? (
+              <button
+                onClick={startRide}
+                className="mt-3 w-full rounded-xl border border-[#00F0FF]/50 bg-[#00F0FF]/15 py-3 text-[13px] font-bold text-[#00F0FF] hover:bg-[#00F0FF]/25"
+              >
+                Start Ride
+              </button>
+            ) : (
+              <button
+                onClick={handleComplete}
+                className="mt-3 w-full rounded-xl border border-[#3DFFC2]/50 bg-[#3DFFC2]/15 py-3 text-[13px] font-bold text-[#3DFFC2] hover:bg-[#3DFFC2]/25"
+              >
+                Complete Ride & Claim Payout
+              </button>
+            )}
           </motion.div>
         )}
 
@@ -1049,6 +1061,7 @@ export default function App() {
               setIsFeedbackOpen={setIsFeedbackOpen}
             />
           </div>
+          <PWAInstallPrompt />
         </div>
       </TripProvider>
     </AuthProvider>
