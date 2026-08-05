@@ -161,35 +161,15 @@ function MapEngineContent({
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-3xl bg-[#0A0D15] select-none">
-      {/* Mode Switcher & Status Floating Bar */}
-      <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/60 p-1 backdrop-blur-md shadow-lg">
-        <button
-          onClick={() => setMapMode('cyber')}
-          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
-            mapMode === 'cyber'
-              ? 'bg-[#00F0FF] text-[#0A0D15] shadow-[0_0_10px_#00F0FF]'
-              : 'text-white/60 hover:text-white'
-          }`}
-        >
-          <Layers size={11} /> Cyber Grid
-        </button>
-        <button
-          onClick={() => setMapMode('real')}
-          className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition-all ${
-            mapMode === 'real'
-              ? 'bg-[#3DFFC2] text-[#0A0D15] shadow-[0_0_10px_#3DFFC2]'
-              : 'text-white/60 hover:text-white'
-          }`}
-        >
-          <Compass size={11} /> Real Map
-        </button>
-      </div>
-
-      {/* Online Engine Indicator */}
-      <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 px-2.5 py-1 text-[9px] font-semibold text-emerald-400 backdrop-blur-md">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span>Map Active</span>
-      </div>
+      {/* Map layer toggle — a single unobtrusive icon button, like the layer
+          switcher on Google/Apple Maps, rather than a labeled mode pill. */}
+      <button
+        onClick={() => setMapMode(mapMode === 'cyber' ? 'real' : 'cyber')}
+        title={mapMode === 'cyber' ? 'Switch to Real Map' : 'Switch to Cyber Grid'}
+        className="absolute top-3 right-3 z-30 flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white/80 backdrop-blur-md transition-colors hover:text-white active:scale-95"
+      >
+        {mapMode === 'cyber' ? <Compass size={15} /> : <Layers size={15} />}
+      </button>
 
       {mapMode === 'cyber' ? (
         <svg

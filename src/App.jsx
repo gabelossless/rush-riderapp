@@ -70,44 +70,25 @@ function Avatar({ size = 44, initials = 'US', className = '' }) {
   )
 }
 
-function SegmentToggle({ value, onChange }) {
-  const options = [
-    { id: 'passenger', label: 'Passenger', icon: Car },
-    { id: 'driver', label: 'Driver', icon: Zap },
-  ]
+// Compact role switch — a single small pill-button rather than a wide
+// two-option segmented control, since a real rideshare app never surfaces
+// "driver mode" as a primary piece of chrome (Uber's driver app is a
+// separate app entirely). This still lets testers flip roles for the demo,
+// it just doesn't dominate the header doing it.
+function RoleSwitch({ value, onChange }) {
+  const isDriver = value === 'driver'
   return (
-    <div className="relative flex rounded-2xl border border-white/10 bg-white/[0.04] p-1">
-      <motion.div
-        layoutId="viewPill"
-        className="absolute inset-y-1 w-[calc(50%-4px)] rounded-xl"
-        style={{
-          left: value === 'passenger' ? 4 : 'calc(50% + 0px)',
-          background: 'linear-gradient(135deg,rgba(0,240,255,0.16),rgba(112,0,255,0.16))',
-          border: '1px solid rgba(0,240,255,0.35)',
-          boxShadow: '0 0 16px rgba(0,240,255,0.25)',
-        }}
-        transition={{ type: 'spring', stiffness: 400, damping: 34 }}
-      />
-      {options.map((opt) => {
-        const Icon = opt.icon
-        const active = value === opt.id
-        return (
-          <button
-            key={opt.id}
-            onClick={() => {
-              triggerHaptic('light')
-              onChange(opt.id)
-            }}
-            className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-semibold transition-colors active:scale-95 ${
-              active ? 'text-white' : 'text-white/45 hover:text-white/75'
-            }`}
-          >
-            <Icon size={14} className={active ? 'text-[#00F0FF]' : ''} />
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
+    <button
+      onClick={() => {
+        triggerHaptic('light')
+        onChange(isDriver ? 'passenger' : 'driver')
+      }}
+      title={isDriver ? 'Switch to rider view' : 'Switch to driver view'}
+      className="flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[10.5px] font-bold text-white/70 transition-colors hover:text-white active:scale-95"
+    >
+      {isDriver ? <Zap size={13} className="text-[#00F0FF]" /> : <Car size={13} className="text-[#00F0FF]" />}
+      {isDriver ? 'Driver' : 'Rider'}
+    </button>
   )
 }
 
@@ -148,75 +129,45 @@ function FairFareTicker({ totalFare = 24.9 }) {
   )
 }
 
-function Header({ view, setView, onOpenAuth, onOpenWallet, onOpenHistory, onOpenFeedback }) {
+function Header({ view, setView, onOpenAuth, onOpenWallet }) {
   const { user } = useAuth()
 
   return (
-    <header className="glass-strong sticky top-0 z-40 border-b border-white/8 px-4 pb-3 pt-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <img
-            src="/logo.png"
-            alt="Rush Logo"
-            className="h-8 w-8 rounded-xl object-cover shadow-[0_0_15px_rgba(0,240,255,0.4)] border border-white/20"
-          />
-          <div>
-            <p className="text-[13px] font-extrabold leading-none tracking-wide text-white">RUSH</p>
-            <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.22em] text-[#3DFFC2]">
-              <span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#3DFFC2] align-middle" />
-              Tester Hub
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Wallet Balance Badge */}
-          <button
-            onClick={onOpenWallet}
-            className="flex items-center gap-1.5 rounded-full border border-[#00F0FF]/30 bg-[#00F0FF]/10 px-2.5 py-1 text-[11px] font-extrabold text-[#00F0FF] transition-all hover:bg-[#00F0FF]/20"
-          >
-            <Wallet size={13} />
-            {usd(user?.walletBalance)}
-          </button>
-
-          {/* User Account Avatar / Auth Button */}
-          {user ? (
-            <button
-              onClick={onOpenAuth}
-              className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] p-1 pr-2 transition-colors hover:border-white/20"
-            >
-              <Avatar size={24} initials={user.avatar || 'US'} />
-              <span className="hidden text-[11px] font-bold text-white/80 sm:block">{user.name.split(' ')[0]}</span>
-            </button>
-          ) : (
-            <button
-              onClick={onOpenAuth}
-              className="rounded-full border border-[#00F0FF]/40 bg-[#00F0FF]/10 px-3 py-1 text-[11px] font-bold text-[#00F0FF]"
-            >
-              Log In
-            </button>
-          )}
-        </div>
+    <header className="glass-strong sticky top-0 z-40 flex items-center justify-between border-b border-white/8 px-4 py-2.5">
+      <div className="flex items-center gap-2">
+        <img
+          src="/logo.png"
+          alt="Rush Logo"
+          className="h-7 w-7 rounded-lg object-cover border border-white/15"
+        />
+        <p className="text-[13px] font-extrabold leading-none tracking-wide text-white">RUSH</p>
       </div>
 
-      <div className="mt-2.5 flex items-center gap-2">
-        <div className="flex-1">
-          <SegmentToggle value={view} onChange={setView} />
-        </div>
+      <div className="flex items-center gap-1.5">
+        {/* Wallet Balance */}
         <button
-          onClick={onOpenHistory}
-          title="Trip History"
-          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/70 transition-colors hover:text-white"
+          onClick={onOpenWallet}
+          className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] font-bold text-white/80 transition-colors hover:text-white"
         >
-          <Clock size={16} />
+          <Wallet size={13} className="text-[#00F0FF]" />
+          {usd(user?.walletBalance)}
         </button>
-        <button
-          onClick={onOpenFeedback}
-          title="Tester Feedback"
-          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/70 transition-colors hover:text-white"
-        >
-          <MessageSquare size={16} />
-        </button>
+
+        <RoleSwitch value={view} onChange={setView} />
+
+        {/* User Account Avatar / Auth Button */}
+        {user ? (
+          <button onClick={onOpenAuth} className="shrink-0">
+            <Avatar size={30} initials={user.avatar || 'US'} />
+          </button>
+        ) : (
+          <button
+            onClick={onOpenAuth}
+            className="rounded-full border border-[#00F0FF]/40 bg-[#00F0FF]/10 px-3 py-1.5 text-[11px] font-bold text-[#00F0FF]"
+          >
+            Log In
+          </button>
+        )}
       </div>
     </header>
   )
@@ -273,7 +224,7 @@ function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
 /*  Passenger View Component                                           */
 /* ------------------------------------------------------------------ */
 
-function PassengerViewContent({ onOpenWallet }) {
+function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const { user, deductRiderFare } = useAuth()
   const { currentTrip, tripHistory, requestRide, cancelRequest, acceptRide, startRide, completeRide, updateProgress } = useTrip()
 
@@ -300,6 +251,12 @@ function PassengerViewContent({ onOpenWallet }) {
       prevTripId.current = currentTrip.id
     }
   }, [currentTrip])
+
+  // Let the bottom tab bar hide itself while a ride is being searched,
+  // tracked, or wrapped up — those screens should be map + sheet only.
+  useEffect(() => {
+    onImmersiveChange?.(stage !== 'home' && stage !== 'options')
+  }, [stage, onImmersiveChange])
 
   useEffect(() => {
     if (!currentTrip) {
@@ -451,29 +408,6 @@ function PassengerViewContent({ onOpenWallet }) {
                 onSelectDestination={handleSelectDestination}
               />
 
-              <p className="mb-2 mt-3.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
-                Preferences
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {PREFERENCES.map((p) => {
-                  const Icon = p.icon
-                  const on = prefs[p.key]
-                  return (
-                    <button
-                      key={p.key}
-                      onClick={() => togglePref(p.key)}
-                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
-                        on
-                          ? 'border-[#00F0FF]/60 bg-[#00F0FF]/15 text-white shadow-[0_0_14px_rgba(0,240,255,0.35)]'
-                          : 'border-white/10 bg-white/[0.04] text-white/50'
-                      }`}
-                    >
-                      <Icon size={13} className={on ? 'text-[#00F0FF]' : ''} /> {p.label}
-                    </button>
-                  )
-                })}
-              </div>
-
               <button
                 onClick={() => {
                   triggerHaptic('light')
@@ -561,6 +495,26 @@ function PassengerViewContent({ onOpenWallet }) {
                 })}
               </div>
 
+              <div className="mt-3 flex flex-wrap gap-2">
+                {PREFERENCES.map((p) => {
+                  const Icon = p.icon
+                  const on = prefs[p.key]
+                  return (
+                    <button
+                      key={p.key}
+                      onClick={() => togglePref(p.key)}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                        on
+                          ? 'border-[#00F0FF]/60 bg-[#00F0FF]/15 text-white shadow-[0_0_14px_rgba(0,240,255,0.35)]'
+                          : 'border-white/10 bg-white/[0.04] text-white/50'
+                      }`}
+                    >
+                      <Icon size={13} className={on ? 'text-[#00F0FF]' : ''} /> {p.label}
+                    </button>
+                  )
+                })}
+              </div>
+
               <div className="mt-3">
                 <FairFareTicker totalFare={totalFare} />
               </div>
@@ -617,7 +571,7 @@ function PassengerViewContent({ onOpenWallet }) {
               </button>
 
               <p className="mt-2 text-[9.5px] font-semibold text-white/40">
-                Or toggle to Driver mode in top header to accept request manually
+                Or tap "Driver" in the header to accept the request manually
               </p>
 
               <button
@@ -807,7 +761,7 @@ function PassengerViewContent({ onOpenWallet }) {
 /*  Driver View Component                                              */
 /* ------------------------------------------------------------------ */
 
-function DriverViewContent() {
+function DriverViewContent({ onImmersiveChange }) {
   const { user, creditDriverEarnings } = useAuth()
   const { currentTrip, acceptRide, startRide, completeRide, cancelRequest } = useTrip()
 
@@ -820,6 +774,11 @@ function DriverViewContent() {
       setCountdown(10)
     }
   }, [currentTrip?.id, currentTrip?.status])
+
+  // Hide the tab bar once a trip request/ride is actively in play.
+  useEffect(() => {
+    onImmersiveChange?.(Boolean(currentTrip))
+  }, [currentTrip, onImmersiveChange])
 
   useEffect(() => {
     let timer
@@ -1054,12 +1013,21 @@ function PhoneFrame({
   setIsFeedbackOpen,
 }) {
   const { user } = useAuth()
+  const [immersive, setImmersive] = useState(false)
 
   useEffect(() => {
     if (user?.role) {
       setView(user.role)
     }
   }, [user?.role, setView])
+
+  // Reset to the normal (tab-bar-visible) chrome whenever the role switches,
+  // so hopping from an in-progress driver trip into rider view doesn't carry
+  // the immersive state over.
+  useEffect(() => {
+    setImmersive(false)
+  }, [view])
+
   return (
     <div className="relative h-[100dvh] w-full max-h-none sm:h-[820px] sm:max-h-[calc(100vh-64px)] sm:w-[410px]">
       <div
@@ -1073,23 +1041,26 @@ function PhoneFrame({
           setView={setView}
           onOpenAuth={() => setIsAuthOpen(true)}
           onOpenWallet={() => setIsWalletOpen(true)}
-          onOpenHistory={() => setIsHistoryOpen(true)}
-          onOpenFeedback={() => setIsFeedbackOpen(true)}
         />
 
         <main className="relative flex-1 overflow-hidden">
           {view === 'passenger' ? (
-            <PassengerViewContent onOpenWallet={() => setIsWalletOpen(true)} />
+            <PassengerViewContent onOpenWallet={() => setIsWalletOpen(true)} onImmersiveChange={setImmersive} />
           ) : (
-            <DriverViewContent />
+            <DriverViewContent onImmersiveChange={setImmersive} />
           )}
         </main>
 
-        <BottomNav
-          onOpenWallet={() => setIsWalletOpen(true)}
-          onOpenHistory={() => setIsHistoryOpen(true)}
-          onOpenFeedback={() => setIsFeedbackOpen(true)}
-        />
+        {/* Hidden while a ride is actively being searched/tracked/wrapped up —
+            real trip-tracking screens are map + sheet only, no persistent tab
+            bar competing for attention. */}
+        {!immersive && (
+          <BottomNav
+            onOpenWallet={() => setIsWalletOpen(true)}
+            onOpenHistory={() => setIsHistoryOpen(true)}
+            onOpenFeedback={() => setIsFeedbackOpen(true)}
+          />
+        )}
 
         {/* Modals */}
         <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
