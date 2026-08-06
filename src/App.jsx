@@ -20,7 +20,7 @@ import {
 
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { TripProvider, useTrip } from './context/TripContext'
-import AuthModal from './components/AuthModal'
+import AccountModal from './components/AccountModal'
 import LocationSearch from './components/LocationSearch'
 import MapEngine from './components/MapEngine'
 import WalletModal from './components/WalletModal'
@@ -453,6 +453,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
               <RideConfirmSheet
                 pickup={pickup}
                 destination={destination}
+                basePrice={basePrice}
                 tiers={RIDE_TIERS}
                 selectedTierId={selectedTier}
                 onTierChange={setSelectedTier}
@@ -933,7 +934,7 @@ function AppShell({
         />
       )}
 
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <AccountModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <WalletModal isOpen={isWalletOpen} onClose={() => setIsWalletOpen(false)} />
       <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
