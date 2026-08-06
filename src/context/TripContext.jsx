@@ -69,8 +69,8 @@ export function TripProvider({ children }) {
     const newRequest = {
       id: `req_${Date.now()}`,
       status: 'SEARCHING', // SEARCHING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
-      pickup: pickup || 'Neon District Ave',
-      destination: destination || 'Downtown Tech Hub',
+      pickup: pickup || 'Current Location',
+      destination: destination || 'Union Station',
       tier: tier || 'Rush Express',
       fare: fare || 24.90,
       driverFare: (fare || 24.90) * 0.88,

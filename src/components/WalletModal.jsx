@@ -120,7 +120,7 @@ export default function WalletModal({ isOpen, onClose }) {
                   </span>
                   <div>
                     <p className="text-[12.5px] font-bold text-white">Rush Express Ride</p>
-                    <p className="text-[10px] text-white/60 truncate">Neon District → Downtown</p>
+                    <p className="text-[10px] text-white/60 truncate">Current Location → Union Station</p>
                   </div>
                 </div>
                 <span className="text-[13px] font-bold text-white/80">-$24.90</span>

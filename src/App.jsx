@@ -1,15 +1,17 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
   Car,
   Check,
-  ChevronLeft,
   CircleCheck,
   Clock,
   Home,
   MessageSquare,
+  Navigation,
   Radio,
+  Search,
+  ShieldCheck,
   Sparkles,
   Star,
   Wallet,
@@ -25,7 +27,9 @@ import WalletModal from './components/WalletModal'
 import HistoryModal from './components/HistoryModal'
 import FeedbackModal from './components/FeedbackModal'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
-import { PREFERENCES, RIDE_TIERS } from './data/mockData'
+import SignUpFlow from './components/SignUpFlow'
+import RideConfirmSheet from './components/RideConfirmSheet'
+import { PREFERENCES, RIDE_TIERS, PRESET_DESTINATIONS, SAVED_PLACES } from './data/mockData'
 import { triggerHaptic } from './utils/haptics'
 
 const usd = (n) => `$${(n || 0).toFixed(2)}`
@@ -51,11 +55,6 @@ function Avatar({ size = 44, initials = 'US', className = '' }) {
   )
 }
 
-// Compact role switch — a single small pill-button rather than a wide
-// two-option segmented control, since a real rideshare app never surfaces
-// "driver mode" as a primary piece of chrome (Uber's driver app is a
-// separate app entirely). This still lets testers flip roles for the demo,
-// it just doesn't dominate the header doing it.
 function RoleSwitch({ value, onChange }) {
   const isDriver = value === 'driver'
   return (
@@ -73,41 +72,6 @@ function RoleSwitch({ value, onChange }) {
   )
 }
 
-function FairFareTicker({ totalFare = 24.9 }) {
-  return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-3.5">
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">FairFare Model</span>
-        <span className="rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-semibold text-white/60">
-          {usd(totalFare)} total
-        </span>
-      </div>
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-        <motion.div
-          className="h-full rounded-l-full bg-[#34D399]"
-          initial={{ width: 0 }}
-          animate={{ width: '88%' }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-        />
-        <motion.div
-          className="h-full rounded-r-full bg-[#64748B]"
-          initial={{ width: 0 }}
-          animate={{ width: '12%' }}
-          transition={{ duration: 0.8, delay: 0.1, ease: 'easeOut' }}
-        />
-      </div>
-      <div className="mt-2.5 flex items-center justify-between text-[10.5px] font-semibold">
-        <span className="flex items-center gap-1 text-[#34D399]">
-          <span className="h-2 w-2 rounded-full bg-[#34D399]" /> 88% Driver Payout ({usd(totalFare * DRIVER_PCT)})
-        </span>
-        <span className="flex items-center gap-1 text-[#94A3B8]">
-          <span className="h-2 w-2 rounded-full bg-[#94A3B8]" /> 12% Platform Fee ({usd(totalFare * (1 - DRIVER_PCT))})
-        </span>
-      </div>
-    </div>
-  )
-}
-
 function Header({ view, setView, onOpenAuth, onOpenWallet }) {
   const { user } = useAuth()
 
@@ -120,11 +84,15 @@ function Header({ view, setView, onOpenAuth, onOpenWallet }) {
             alt="Rush Logo"
             className="h-7 w-7 rounded-lg object-cover border border-white/15"
           />
-          <p className="text-[13px] font-extrabold leading-none tracking-wide text-white">RUSH</p>
+          <div className="leading-none">
+            <p className="text-[13px] font-extrabold leading-none tracking-wide text-white">RUSH</p>
+            <p className="mt-0.5 text-[8px] font-semibold uppercase tracking-[0.18em] text-white/35">
+              Human-driven
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Wallet Balance */}
           <button
             onClick={onOpenWallet}
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[11px] font-bold text-white/80 transition-colors hover:text-white"
@@ -135,19 +103,11 @@ function Header({ view, setView, onOpenAuth, onOpenWallet }) {
 
           <RoleSwitch value={view} onChange={setView} />
 
-          {/* User Account Avatar / Auth Button */}
           {user ? (
             <button onClick={onOpenAuth} className="shrink-0">
               <Avatar size={30} initials={user.avatar || 'US'} />
             </button>
-          ) : (
-            <button
-              onClick={onOpenAuth}
-              className="rounded-full border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-3 py-1.5 text-[11px] font-bold text-[#38BDF8]"
-            >
-              Log In
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
     </header>
@@ -202,7 +162,7 @@ function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Passenger View Component                                           */
+/*  Passenger View — Where to? → confirm → searching → matched → done  */
 /* ------------------------------------------------------------------ */
 
 function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
@@ -211,45 +171,56 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
   const prevTripId = useRef(null)
 
-  const [pickup, setPickup] = useState('Neon District Ave')
+  const [pickup, setPickup] = useState('Current Location')
   const [destination, setDestination] = useState(null)
-  const [selectedTier, setSelectedTier] = useState('express')
-  const [prefs, setPrefs] = useState({ quiet: false, ac: true, express: false })
-  const [stage, setStage] = useState('home')
+  const [selectedTier, setSelectedTier] = useState('standard')
+  const [stage, setStage] = useState('home') // home | dest | confirm | searching | matched | completed
   const [pickupCoords, setPickupCoords] = useState({ x: 80, y: 360 })
   const [dropoffCoords, setDropoffCoords] = useState({ x: 322, y: 92 })
   const [demoNotification, setDemoNotification] = useState(null)
+  const [searchNote, setSearchNote] = useState(false)
   const [tip, setTip] = useState(null)
   const [rating, setRating] = useState(0)
   const [lastCompleted, setLastCompleted] = useState(null)
 
-  const currentTierObj = RIDE_TIERS.find((t) => t.id === selectedTier) || RIDE_TIERS[1]
-  const basePrice = destination ? destination.distance ? parseFloat(destination.distance) * 2.2 + 10 : 22.5 : 22.5
-  const totalFare = Math.round((basePrice * currentTierObj.multiplier) * 100) / 100
+  const currentTierObj = RIDE_TIERS.find((t) => t.id === selectedTier) || RIDE_TIERS[0]
+  const basePrice = destination?.distance ? parseFloat(destination.distance) * 2.2 + 10 : 22.5
+  const totalFare = Math.round(basePrice * currentTierObj.multiplier * 100) / 100
+
+  const recents = useMemo(() => {
+    const seen = new Set()
+    const list = []
+    for (const t of tripHistory) {
+      const match = PRESET_DESTINATIONS.find((d) => d.name === t.destination)
+      if (match && !seen.has(match.id)) {
+        seen.add(match.id)
+        list.push(match)
+      }
+      if (list.length >= 3) break
+    }
+    return list
+  }, [tripHistory])
 
   useEffect(() => {
-    if (currentTrip) {
-      prevTripId.current = currentTrip.id
-    }
+    if (currentTrip) prevTripId.current = currentTrip.id
   }, [currentTrip])
 
-  // Let the bottom tab bar hide itself while a ride is being searched,
-  // tracked, or wrapped up — those screens should be map + sheet only.
+  // Hide the tab bar while a ride is actively being searched/tracked/wrapped up.
   useEffect(() => {
-    onImmersiveChange?.(stage !== 'home' && stage !== 'options')
+    onImmersiveChange?.(stage === 'searching' || stage === 'matched' || stage === 'completed')
   }, [stage, onImmersiveChange])
 
   useEffect(() => {
     if (!currentTrip) {
       if (prevTripId.current) {
-        const completedTrip = tripHistory.find(t => t.id === prevTripId.current)
+        const completedTrip = tripHistory.find((t) => t.id === prevTripId.current)
         if (completedTrip) {
           setStage('completed')
           setLastCompleted(completedTrip)
           deductRiderFare(completedTrip.fare)
         }
         prevTripId.current = null
-      } else if (stage !== 'options' && stage !== 'home' && stage !== 'completed') {
+      } else if (!['dest', 'confirm', 'completed'].includes(stage)) {
         setStage('home')
       }
     } else if (currentTrip.status === 'SEARCHING') {
@@ -269,16 +240,29 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     return () => clearTimeout(timeout)
   }, [currentTrip?.status, currentTrip?.progress, updateProgress])
 
+  // Honest searching copy: after a few seconds, tell the user the search is expanding.
+  useEffect(() => {
+    let t
+    if (stage === 'searching') {
+      setSearchNote(false)
+      t = setTimeout(() => setSearchNote(true), 6500)
+    }
+    return () => clearTimeout(t)
+  }, [stage])
+
+  const openDestinationSearch = () => {
+    triggerHaptic('light')
+    setStage('dest')
+  }
+
   const handleSelectDestination = (dest) => {
     triggerHaptic('light')
     setDestination(dest)
-    if (dest.coords) {
-      setDropoffCoords(dest.coords)
-    }
-    setStage('options')
+    if (dest.coords) setDropoffCoords(dest.coords)
+    setStage('confirm')
   }
 
-  const handleConfirmRide = () => {
+  const handleRequestRide = () => {
     triggerHaptic('medium')
     if (user && user.walletBalance < totalFare) {
       setDemoNotification('Insufficient wallet balance. Please add demo funds.')
@@ -288,11 +272,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     }
     requestRide({
       pickup,
-      destination: destination ? destination.name : 'Downtown Tech Hub',
+      destination: destination ? destination.name : 'Union Station',
       tier: currentTierObj.name,
       fare: totalFare,
-      eta: currentTierObj.eta,
-      distance: destination ? destination.distance : '2.4 mi',
+      eta: currentTierObj.etaRange,
+      distance: destination ? destination.distance : '2.1 mi',
       riderName: user ? user.name : 'Alex Rivera',
     })
     setStage('searching')
@@ -302,10 +286,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     triggerHaptic('success')
     acceptRide({
       name: 'Marcus Vance',
-      car: 'Tesla Model Y — Cyber Black',
+      car: 'Tesla Model Y — Matte Black',
       plate: 'RUSH-88',
       rating: 4.98,
       initials: 'MV',
+      verified: true,
     })
   }
 
@@ -329,18 +314,15 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     setLastCompleted(null)
   }
 
-  const togglePref = (key) => {
-    triggerHaptic('light')
-    setPrefs((p) => ({ ...p, [key]: !p[key] }))
-  }
-
   const handleMapClick = (coords) => {
-    if (stage === 'home' || stage === 'options') {
+    if (stage === 'home' || stage === 'confirm') {
       triggerHaptic('click')
       setPickupCoords(coords)
-      setPickup(`Grid (${coords.x}, ${coords.y})`)
+      setPickup('Pinned location')
     }
   }
+
+  const walkingNote = pickup === 'Current Location' ? '~2 min walk' : 'At pin'
 
   return (
     <div className="relative h-full">
@@ -384,137 +366,102 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
           >
             <div className="glass w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
-              <LocationSearch
-                pickup={pickup}
-                destination={destination}
-                onSelectPickup={setPickup}
-                onSelectDestination={handleSelectDestination}
-              />
-
+              {/* Where to? — the single primary action */}
               <button
-                onClick={() => {
-                  triggerHaptic('light')
-                  if (destination) setStage('options')
-                }}
-                disabled={!destination}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#38BDF8] py-3.5 text-[13.5px] font-extrabold text-[#061018] transition-transform active:scale-[0.98] disabled:opacity-40"
+                onClick={openDestinationSearch}
+                className="flex w-full items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.07] px-4 py-3.5 text-left transition-all hover:border-[#38BDF8]/50 hover:bg-white/[0.09] active:scale-[0.99]"
               >
-                <span className="truncate">{destination ? `Choose Tier for ${destination.name}` : 'Select a Destination above'}</span> <ArrowRight size={16} className="shrink-0" />
+                <Search size={18} className="shrink-0 text-[#38BDF8]" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-extrabold text-white">Where to?</p>
+                  <p className="text-[10.5px] font-medium text-white/40">
+                    Pickup: {pickup}
+                  </p>
+                </div>
+                <ArrowRight size={16} className="shrink-0 text-white/40" />
               </button>
+
+              {/* Saved places */}
+              <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar">
+                {SAVED_PLACES.map((place) => {
+                  const Icon = place.icon
+                  return (
+                    <button
+                      key={place.id}
+                      onClick={() => handleSelectDestination(place)}
+                      className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11.5px] font-bold text-white/80 transition-all hover:border-[#38BDF8]/40 hover:text-white active:scale-95"
+                    >
+                      <Icon size={14} style={{ color: place.tint }} />
+                      {place.name}
+                    </button>
+                  )
+                })}
+                {recents.map((r) => {
+                  const Icon = r.icon
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => handleSelectDestination(r)}
+                      className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11.5px] font-bold text-white/80 transition-all hover:border-[#38BDF8]/40 hover:text-white active:scale-95"
+                    >
+                      <Icon size={14} style={{ color: r.tint }} />
+                      {r.name}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <p className="mt-3 flex items-center gap-1.5 text-[10px] font-medium text-white/35">
+                <ShieldCheck size={11} className="text-[#34D399]" />
+                88% of every fare goes to your driver. No surge games.
+              </p>
             </div>
           </motion.div>
         )}
 
-        {stage === 'options' && (
+        {stage === 'dest' && (
           <motion.div
-            key="options"
+            key="dest"
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
             className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
           >
-            <div className="glass w-full max-w-lg max-h-[500px] overflow-y-auto rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50 no-scrollbar">
-              <div className="mb-3 flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    triggerHaptic('light')
-                    setStage('home')
-                  }}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-bold text-white">{destination?.name}</p>
-                  <p className="truncate text-[10.5px] font-medium text-white/45">{destination?.address}</p>
-                </div>
-              </div>
+            <div className="glass max-h-[78dvh] w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
+              <LocationSearch
+                pickup={pickup}
+                onPickupChange={setPickup}
+                destination={destination}
+                onSelectDestination={handleSelectDestination}
+                onBack={() => setStage('home')}
+                savedPlaces={SAVED_PLACES}
+                recents={recents}
+              />
+            </div>
+          </motion.div>
+        )}
 
-              <div className="flex flex-col gap-2">
-                {RIDE_TIERS.map((tier) => {
-                  const Icon = tier.icon
-                  const active = selectedTier === tier.id
-                  const fareAmt = Math.round((basePrice * tier.multiplier) * 100) / 100
-                  return (
-                    <button
-                      key={tier.id}
-                      onClick={() => {
-                        triggerHaptic('light')
-                        setSelectedTier(tier.id)
-                      }}
-                      className={`relative flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
-                        active
-                          ? 'border-[#38BDF8]/60 bg-[#38BDF8]/10'
-                          : 'border-white/10 bg-white/[0.03] hover:border-white/25'
-                      }`}
-                    >
-                      <span
-                        className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                          active ? 'bg-[#38BDF8]/20 text-[#38BDF8]' : 'bg-white/[0.06] text-white/60'
-                        }`}
-                      >
-                        <Icon size={20} />
-                      </span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-bold text-white">{tier.name}</span>
-                          {tier.featured && (
-                            <span className="rounded-full bg-[#38BDF8] px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-[#061018]">
-                              Fastest
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-[10.5px] font-medium text-white/45">
-                          {tier.eta} pickup • {tier.desc}
-                        </p>
-                      </div>
-                      <span className="text-[15px] font-extrabold text-white">{usd(fareAmt)}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {PREFERENCES.map((p) => {
-                  const Icon = p.icon
-                  const on = prefs[p.key]
-                  return (
-                    <button
-                      key={p.key}
-                      onClick={() => togglePref(p.key)}
-                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-all ${
-                        on
-                          ? 'border-[#38BDF8]/60 bg-[#38BDF8]/15 text-white'
-                          : 'border-white/10 bg-white/[0.04] text-white/50'
-                      }`}
-                    >
-                      <Icon size={13} className={on ? 'text-[#38BDF8]' : ''} /> {p.label}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="mt-3">
-                <FairFareTicker totalFare={totalFare} />
-              </div>
-
-              {/* Payment Method Badge */}
-              <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-[11px]">
-                <span className="text-white/50">Payment Method</span>
-                <button
-                  onClick={onOpenWallet}
-                  className="flex items-center gap-1.5 font-bold text-[#38BDF8] hover:underline"
-                >
-                  <Wallet size={13} /> Rush Wallet ({usd(user?.walletBalance || 100)})
-                </button>
-              </div>
-
-              <button
-                onClick={handleConfirmRide}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#38BDF8] py-3.5 text-[14px] font-extrabold text-[#061018] transition-transform active:scale-[0.98]"
-              >
-                Confirm {currentTierObj.name} ({usd(totalFare)}) <ArrowRight size={16} />
-              </button>
+        {stage === 'confirm' && destination && (
+          <motion.div
+            key="confirm"
+            initial={{ y: 60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 60, opacity: 0 }}
+            className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
+          >
+            <div className="glass max-h-[82dvh] w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
+              <RideConfirmSheet
+                pickup={pickup}
+                destination={destination}
+                tiers={RIDE_TIERS}
+                selectedTierId={selectedTier}
+                onTierChange={setSelectedTier}
+                onBack={() => setStage('dest')}
+                onRequest={handleRequestRide}
+                user={user}
+                walkingNote={walkingNote}
+                onOpenWallet={onOpenWallet}
+              />
             </div>
           </motion.div>
         )}
@@ -532,12 +479,13 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 <span className="absolute inset-0 rounded-full border border-[#38BDF8]/40 animate-pulse-ring" />
                 <Radio size={28} className="animate-spin text-[#38BDF8]" style={{ animationDuration: '2s' }} />
               </div>
-              <p className="text-[14px] font-extrabold text-white">Matching with Nearby Driver…</p>
+              <p className="text-[14px] font-extrabold text-white">Matching you with a human driver…</p>
               <p className="mt-1 text-center text-[11px] font-medium leading-relaxed text-white/50">
-                Searching nearby drivers for {destination?.name || 'your ride'}
+                {searchNote
+                  ? 'Still searching — expanding to nearby neighborhoods. Typically adds 3–6 min in Denver.'
+                  : 'Usually takes 2–4 minutes in your area.'}
               </p>
 
-              {/* Instant Auto-Match Button for Seamless 1-Person Demo */}
               <button
                 onClick={handleAutoMatchDriver}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#34D399]/50 bg-[#34D399]/15 py-2.5 text-[12px] font-extrabold text-[#34D399] transition-all active:scale-[0.98]"
@@ -581,14 +529,41 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
               <div className="flex items-center gap-3.5 rounded-2xl border border-white/8 bg-white/[0.04] p-3">
                 <Avatar size={44} initials={currentTrip.driver?.initials || 'MV'} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-extrabold text-white">{currentTrip.driver?.name || 'Marcus Vance'}</p>
-                  <p className="truncate text-[10.5px] font-medium text-white/50">{currentTrip.driver?.car || 'Tesla Model Y — Cyber Black'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-[13px] font-extrabold text-white">
+                      {currentTrip.driver?.name || 'Marcus Vance'}
+                    </p>
+                    {(currentTrip.driver?.verified ?? true) && (
+                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#34D399]/15 px-2 py-0.5 text-[8.5px] font-extrabold uppercase tracking-wider text-[#34D399]">
+                        <ShieldCheck size={10} /> Verified Human
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-[10.5px] font-medium text-white/50">
+                    {currentTrip.driver?.car || 'Tesla Model Y — Matte Black'} • ★{' '}
+                    {currentTrip.driver?.rating || 4.98}
+                  </p>
                 </div>
                 <div className="text-right">
                   <span className="rounded-md border border-white/15 bg-white/[0.05] px-2 py-1 text-[9px] font-bold tracking-widest text-white/70">
                     {currentTrip.driver?.plate || 'RUSH-88'}
                   </span>
                 </div>
+              </div>
+
+              {/* Trip preferences — moved to in-ride, small and quiet */}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREFERENCES.filter((p) => ['quiet', 'ac'].includes(p.key)).map((p) => {
+                  const Icon = p.icon
+                  return (
+                    <span
+                      key={p.key}
+                      className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold text-white/50"
+                    >
+                      <Icon size={11} /> {p.label}
+                    </span>
+                  )
+                })}
               </div>
 
               {/* Ride Lifecycle Demo Actions */}
@@ -643,7 +618,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
               <div className="mt-5 w-full rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 text-left">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">Receipt</p>
                 <div className="flex justify-between text-[12px] font-semibold">
-                  <span className="text-white/55">{lastCompleted?.tier || 'Rush Express'} fare</span>
+                  <span className="text-white/55">{lastCompleted?.tier || 'Rush Standard'} fare</span>
                   <span className="text-white">{usd(lastCompleted?.fare || 0)}</span>
                 </div>
                 <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
@@ -732,7 +707,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Driver View Component                                              */
+/*  Driver View — online toggle, honest request card, payout-first     */
 /* ------------------------------------------------------------------ */
 
 function DriverViewContent({ onImmersiveChange }) {
@@ -744,12 +719,9 @@ function DriverViewContent({ onImmersiveChange }) {
   const [countdown, setCountdown] = useState(10)
 
   useEffect(() => {
-    if (currentTrip?.status === 'SEARCHING') {
-      setCountdown(10)
-    }
+    if (currentTrip?.status === 'SEARCHING') setCountdown(10)
   }, [currentTrip?.id, currentTrip?.status])
 
-  // Hide the tab bar once a trip request/ride is actively in play.
   useEffect(() => {
     onImmersiveChange?.(Boolean(currentTrip))
   }, [currentTrip, onImmersiveChange])
@@ -757,7 +729,7 @@ function DriverViewContent({ onImmersiveChange }) {
   useEffect(() => {
     let timer
     if (currentTrip?.status === 'SEARCHING' && countdown > 0) {
-      timer = setTimeout(() => setCountdown(c => c - 1), 1000)
+      timer = setTimeout(() => setCountdown((c) => c - 1), 1000)
     } else if (currentTrip?.status === 'SEARCHING' && countdown === 0) {
       cancelRequest()
     }
@@ -771,6 +743,7 @@ function DriverViewContent({ onImmersiveChange }) {
       plate: user?.plate || 'RUSH-88',
       rating: 4.98,
       initials: user?.avatar || 'MV',
+      verified: !!user?.humanVerified,
     })
   }
 
@@ -838,9 +811,9 @@ function DriverViewContent({ onImmersiveChange }) {
           >
             <div className="mb-2 flex items-center justify-between">
               <span className="rounded-full bg-[#38BDF8]/20 px-2.5 py-0.5 text-[9.5px] font-black uppercase text-[#38BDF8]">
-                New Trip Request! ({countdown}s)
+                New Trip Request ({countdown}s)
               </span>
-              <span className="text-[12px] font-extrabold text-[#34D399]">
+              <span className="text-[14px] font-black text-[#34D399]">
                 Earn {usd(currentTrip.driverFare || currentTrip.fare * 0.88)}
               </span>
             </div>
@@ -849,6 +822,10 @@ function DriverViewContent({ onImmersiveChange }) {
               <p className="font-bold text-white">Rider: {currentTrip.riderName}</p>
               <p className="truncate text-[11px] text-white/60">Pickup: {currentTrip.pickup}</p>
               <p className="truncate text-[11px] text-white/60">Dropoff: {currentTrip.destination}</p>
+              <p className="mt-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold text-[#38BDF8]">
+                <Navigation size={11} /> Rider is {currentTrip.distance || '2.1 mi'} away — about{' '}
+                {currentTrip.eta || '2–5 min'} drive to pickup
+              </p>
             </div>
 
             <button
@@ -872,7 +849,7 @@ function DriverViewContent({ onImmersiveChange }) {
             </p>
             <p className="truncate text-[14px] font-extrabold text-white">{currentTrip.destination}</p>
             <p className="text-[11px] font-medium text-[#34D399]">
-              Net Payout: {usd(currentTrip.driverFare || currentTrip.fare * 0.88)}
+              Net Payout: {usd(currentTrip.driverFare || currentTrip.fare * 0.88)} (88%)
             </p>
 
             {currentTrip.status === 'ACCEPTED' ? (
@@ -905,10 +882,7 @@ function DriverViewContent({ onImmersiveChange }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  App Shell — fills the real browser viewport. No fake phone bezel:  */
-/*  the map goes full-bleed and the interactive panels (header, sheet, */
-/*  tab bar) cap themselves to a comfortable reading width so they      */
-/*  don't stretch edge-to-edge on a wide desktop window.                */
+/*  App Shell                                                          */
 /* ------------------------------------------------------------------ */
 
 function AppShell({
@@ -927,14 +901,9 @@ function AppShell({
   const [immersive, setImmersive] = useState(false)
 
   useEffect(() => {
-    if (user?.role) {
-      setView(user.role)
-    }
+    if (user?.role) setView(user.role)
   }, [user?.role, setView])
 
-  // Reset to the normal (tab-bar-visible) chrome whenever the role switches,
-  // so hopping from an in-progress driver trip into rider view doesn't carry
-  // the immersive state over.
   useEffect(() => {
     setImmersive(false)
   }, [view])
@@ -956,9 +925,6 @@ function AppShell({
         )}
       </main>
 
-      {/* Hidden while a ride is actively being searched/tracked/wrapped up —
-          real trip-tracking screens are map + sheet only, no persistent tab
-          bar competing for attention. */}
       {!immersive && (
         <BottomNav
           onOpenWallet={() => setIsWalletOpen(true)}
@@ -967,7 +933,6 @@ function AppShell({
         />
       )}
 
-      {/* Modals */}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <WalletModal isOpen={isWalletOpen} onClose={() => setIsWalletOpen(false)} />
       <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
@@ -977,36 +942,58 @@ function AppShell({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Main App Root Component                                            */
+/*  Root Gate — the landing/auth page is the front door. Users only    */
+/*  reach the main UI after authenticating (or completing the flow).   */
 /* ------------------------------------------------------------------ */
 
-export default function App() {
+function RootGate() {
+  const { user } = useAuth()
+  const [sessionDone, setSessionDone] = useState(() => !!user)
   const [view, setView] = useState('passenger')
   const [isAuthOpen, setIsAuthOpen] = useState(false)
   const [isWalletOpen, setIsWalletOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
 
+  // Returning visitors (restored session) skip the landing page;
+  // logging out sends everyone back to the front door.
+  useEffect(() => {
+    if (!user) setSessionDone(false)
+  }, [user])
+
+  if (!user || !sessionDone) {
+    return <SignUpFlow onComplete={() => setSessionDone(true)} />
+  }
+
+  return (
+    <AppShell
+      view={view}
+      setView={setView}
+      isAuthOpen={isAuthOpen}
+      setIsAuthOpen={setIsAuthOpen}
+      isWalletOpen={isWalletOpen}
+      setIsWalletOpen={setIsWalletOpen}
+      isHistoryOpen={isHistoryOpen}
+      setIsHistoryOpen={setIsHistoryOpen}
+      isFeedbackOpen={isFeedbackOpen}
+      setIsFeedbackOpen={setIsFeedbackOpen}
+    />
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main App Root Component                                            */
+/* ------------------------------------------------------------------ */
+
+export default function App() {
   return (
     <AuthProvider>
       <TripProvider>
         <div className="relative h-[100dvh] w-full overflow-hidden bg-void font-sans">
-          <AppShell
-            view={view}
-            setView={setView}
-            isAuthOpen={isAuthOpen}
-            setIsAuthOpen={setIsAuthOpen}
-            isWalletOpen={isWalletOpen}
-            setIsWalletOpen={setIsWalletOpen}
-            isHistoryOpen={isHistoryOpen}
-            setIsHistoryOpen={setIsHistoryOpen}
-            isFeedbackOpen={isFeedbackOpen}
-            setIsFeedbackOpen={setIsFeedbackOpen}
-          />
+          <RootGate />
           <PWAInstallPrompt />
         </div>
       </TripProvider>
     </AuthProvider>
   )
 }
-

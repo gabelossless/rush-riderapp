@@ -1,57 +1,30 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  X,
-  ArrowRight,
-  LogOut,
-  ShieldCheck,
-  Sparkles,
-} from 'lucide-react'
+import { X, LogOut, Car, User, Wallet, Star, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { triggerHaptic } from '../utils/haptics'
-import SignUpFlow from './SignUpFlow'
 
-export default function AuthModal({ isOpen, onClose }) {
-  const { loginPresetRider, loginPresetDriver, logout, user } = useAuth()
-  const [toastMessage, setToastMessage] = useState(null)
-  const [showSignUp, setShowSignUp] = useState(false)
+/* ------------------------------------------------------------------ */
+/*  AccountModal — the profile card. Authentication now lives on the  */
+/*  landing page (SignUpFlow); this modal is for the signed-in user:   */
+/*  profile, wallet balance, role switch, and logout.                  */
+/* ------------------------------------------------------------------ */
 
-  const showToast = (msg) => {
-    triggerHaptic('success')
-    setToastMessage(msg)
-    setTimeout(() => {
-      setToastMessage(null)
-      onClose()
-    }, 1200)
-  }
+export default function AccountModal({ isOpen, onClose }) {
+  const { user, logout, switchRole } = useAuth()
 
-  const handlePresetRider = () => {
-    loginPresetRider()
-    showToast('Logged in as Rider (Alex Rivera)')
-  }
+  if (!user) return null
 
-  const handlePresetDriver = () => {
-    loginPresetDriver()
-    showToast('Logged in as Driver (Marcus Vance)')
-  }
+  const isDriver = user.role === 'driver'
 
   const handleLogout = () => {
     triggerHaptic('medium')
     logout()
-    setToastMessage('Logged out successfully')
-    setTimeout(() => setToastMessage(null), 1500)
+    onClose()
   }
 
-  // If the SignUpFlow is active, render it full-screen instead of the modal
-  if (showSignUp) {
-    return (
-      <SignUpFlow
-        onComplete={() => {
-          setShowSignUp(false)
-          onClose()
-        }}
-      />
-    )
+  const handleSwitchRole = () => {
+    triggerHaptic('light')
+    switchRole(isDriver ? 'passenger' : 'driver')
   }
 
   return (
@@ -78,21 +51,7 @@ export default function AuthModal({ isOpen, onClose }) {
             className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-2xl shadow-black/50"
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <img
-                  src="/logo.png"
-                  alt="Rush Logo"
-                  className="h-9 w-9 rounded-xl object-cover border border-white/20"
-                />
-                <div>
-                  <h2 className="text-lg font-extrabold tracking-wide text-white">
-                    Quick Access
-                  </h2>
-                  <p className="text-[11px] font-medium text-white/50">
-                    Jump right in or create an account
-                  </p>
-                </div>
-              </div>
+              <h2 className="text-lg font-extrabold tracking-wide text-white">Account</h2>
               <button
                 onClick={() => {
                   triggerHaptic('light')
@@ -104,119 +63,83 @@ export default function AuthModal({ isOpen, onClose }) {
               </button>
             </div>
 
-            {/* Feedback Toast */}
-            {toastMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-[#34D399]/40 bg-[#34D399]/15 p-2.5 text-[12px] font-bold text-[#34D399]"
+            {/* Profile header */}
+            <div className="mt-5 flex items-center gap-4">
+              <div
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-[18px] font-black text-[#04140F]"
+                style={{ background: isDriver ? '#34D399' : '#38BDF8' }}
               >
-                <ShieldCheck size={16} /> {toastMessage}
-              </motion.div>
-            )}
-
-            {/* Quick Presets */}
-            <div className="mt-5 flex flex-col gap-3">
-              <p className="text-[11.5px] font-medium text-white/55">
-                Select a ready-to-test preset account:
-              </p>
-
-              {/* Rider Preset Card */}
-              <button
-                onClick={handlePresetRider}
-                className="group relative flex items-center justify-between rounded-2xl border border-[#38BDF8]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#38BDF8] hover:bg-white/[0.08] active:scale-[0.98]"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#38BDF8] font-bold text-[#04140F]">
-                    AR
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-extrabold text-white">
-                        Alex Rivera
-                      </span>
-                      <span className="rounded-full bg-[#38BDF8]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#38BDF8]">
-                        Rider Profile
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-[11px] font-medium text-white/50">
-                      $142.50 Balance • 4.95 Rating • Ready to request rides
-                    </p>
-                  </div>
-                </div>
-                <ArrowRight
-                  size={18}
-                  className="text-[#38BDF8] transition-transform group-hover:translate-x-1"
-                />
-              </button>
-
-              {/* Driver Preset Card */}
-              <button
-                onClick={handlePresetDriver}
-                className="group relative flex items-center justify-between rounded-2xl border border-[#34D399]/30 bg-white/[0.04] p-4 text-left transition-all hover:border-[#34D399] hover:bg-white/[0.08] active:scale-[0.98]"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#34D399] font-bold text-[#04140F]">
-                    MV
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-extrabold text-white">
-                        Marcus Vance
-                      </span>
-                      <span className="rounded-full bg-[#34D399]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#34D399]">
-                        Driver Profile
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-[11px] font-medium text-white/50">
-                      Tesla Model Y • 88% Payout Rate • Accepts requests
-                    </p>
-                  </div>
-                </div>
-                <ArrowRight
-                  size={18}
-                  className="text-[#34D399] transition-transform group-hover:translate-x-1"
-                />
-              </button>
-            </div>
-
-            {/* Create Account CTA */}
-            <div className="mt-5 border-t border-white/10 pt-4">
-              <button
-                onClick={() => {
-                  triggerHaptic('medium')
-                  setShowSignUp(true)
-                }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] py-3 text-[13px] font-extrabold text-white transition-all hover:bg-white/[0.08] active:scale-[0.98]"
-              >
-                <Sparkles size={15} className="text-[#38BDF8]" />
-                Create Account
-                <ArrowRight size={14} />
-              </button>
-              <p className="mt-2 text-center text-[10px] font-medium text-white/35">
-                Full onboarding with role selection & verification
-              </p>
-            </div>
-
-            {/* Active Session Card with Logout */}
-            {user && (
-              <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3.5">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-[#34D399] animate-pulse" />
-                  <span className="text-[11.5px] font-medium text-white/60">
-                    Logged in as{' '}
-                    <strong className="text-white">{user.name}</strong> (
-                    {user.role})
+                {user.avatar || 'US'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[16px] font-extrabold text-white">{user.name}</p>
+                <p className="truncate text-[11px] font-medium text-white/45">{user.email}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/60">
+                    {isDriver ? 'Driver Partner' : 'Rider'}
+                  </span>
+                  <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/60">
+                    Joined {user.joinedDate}
                   </span>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-bold text-red-400 hover:bg-red-500/20 active:scale-95"
-                >
-                  <LogOut size={12} /> Log Out
-                </button>
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
+                <Wallet size={14} className="mx-auto text-[#38BDF8]" />
+                <p className="mt-1 text-[13px] font-extrabold text-white">
+                  ${(user.walletBalance || 0).toFixed(2)}
+                </p>
+                <p className="text-[8.5px] font-bold uppercase tracking-wider text-white/40">Balance</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
+                <Star size={14} className="mx-auto text-[#FFD166]" />
+                <p className="mt-1 text-[13px] font-extrabold text-white">{user.rating || '5.0'}</p>
+                <p className="text-[8.5px] font-bold uppercase tracking-wider text-white/40">Rating</p>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
+                <Clock size={14} className="mx-auto text-[#34D399]" />
+                <p className="mt-1 text-[13px] font-extrabold text-white">{user.totalRides || 0}</p>
+                <p className="text-[8.5px] font-bold uppercase tracking-wider text-white/40">Rides</p>
+              </div>
+            </div>
+
+            {/* Driver vehicle card */}
+            {isDriver && (
+              <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#34D399]/25 bg-[#34D399]/[0.06] px-3.5 py-2.5">
+                <div className="flex items-center gap-2.5">
+                  <Car size={15} className="text-[#34D399]" />
+                  <span className="text-[12px] font-bold text-white">{user.car}</span>
+                </div>
+                <span className="rounded-md border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[9px] font-bold tracking-widest text-white/60">
+                  {user.plate}
+                </span>
               </div>
             )}
+
+            {/* Role switch */}
+            <button
+              onClick={handleSwitchRole}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] py-3 text-[13px] font-extrabold text-white transition-all hover:bg-white/[0.08] active:scale-[0.98]"
+            >
+              {isDriver ? <User size={15} className="text-[#38BDF8]" /> : <Car size={15} className="text-[#34D399]" />}
+              Switch to {isDriver ? 'Rider' : 'Driver'} view
+            </button>
+
+            {/* Logout */}
+            <div className="mt-3 border-t border-white/10 pt-3.5">
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 py-3 text-[12.5px] font-bold text-red-400 transition-all hover:bg-red-500/20 active:scale-[0.98]"
+              >
+                <LogOut size={14} /> Log Out
+              </button>
+              <p className="mt-2 text-center text-[9.5px] font-medium text-white/30">
+                Logging out returns you to the Rush welcome screen
+              </p>
+            </div>
           </motion.div>
         </div>
       )}

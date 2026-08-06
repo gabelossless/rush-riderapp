@@ -4,16 +4,30 @@ import { PRESET_ACCOUNTS } from '../data/mockData'
 const AuthContext = createContext(null)
 
 const STORAGE_KEY = 'rush_user_session'
+const KNOWN_EMAILS_KEY = 'rush_known_emails'
+
+function loadKnownEmails() {
+  try {
+    const saved = localStorage.getItem(KNOWN_EMAILS_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
-      return saved ? JSON.parse(saved) : PRESET_ACCOUNTS.rider
+      return saved ? JSON.parse(saved) : null
     } catch {
-      return PRESET_ACCOUNTS.rider
+      return null
     }
   })
+
+  // Previously-registered emails (email -> user record) so the adaptive
+  // auth flow can recognize returning users without a backend.
+  const [knownEmails, setKnownEmails] = useState(loadKnownEmails)
 
   useEffect(() => {
     try {
@@ -27,12 +41,38 @@ export function AuthProvider({ children }) {
     }
   }, [user])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(KNOWN_EMAILS_KEY, JSON.stringify(knownEmails))
+    } catch (e) {
+      console.error('Failed to sync known emails:', e)
+    }
+  }, [knownEmails])
+
   const login = (userData) => {
     setUser(userData)
   }
 
   const logout = () => {
     setUser(null)
+  }
+
+  const findKnownUser = (email) => {
+    if (!email) return null
+    const normalized = email.trim().toLowerCase()
+    if (knownEmails[normalized]) return knownEmails[normalized]
+    if (PRESET_ACCOUNTS.rider.email === normalized) return PRESET_ACCOUNTS.rider
+    if (PRESET_ACCOUNTS.driver.email === normalized) return PRESET_ACCOUNTS.driver
+    return null
+  }
+
+  const loginWithEmail = (email) => {
+    const existing = findKnownUser(email)
+    if (existing) {
+      setUser(existing)
+      return existing
+    }
+    return null
   }
 
   const register = ({ name, email, role, vehicle, plate, pledgeAccepted, humanVerified }) => {
@@ -67,16 +107,16 @@ export function AuthProvider({ children }) {
       }),
     }
 
+    if (email) {
+      setKnownEmails((prev) => ({ ...prev, [email.trim().toLowerCase()]: newUser }))
+    }
+
     setUser(newUser)
     return newUser
   }
 
-  const loginPresetRider = () => {
-    setUser(PRESET_ACCOUNTS.rider)
-  }
-
-  const loginPresetDriver = () => {
-    setUser(PRESET_ACCOUNTS.driver)
+  const demoLogin = (role) => {
+    setUser(role === 'driver' ? PRESET_ACCOUNTS.driver : PRESET_ACCOUNTS.rider)
   }
 
   const switchRole = (newRole) => {
@@ -121,11 +161,13 @@ export function AuthProvider({ children }) {
       value={{
         user,
         isAuthenticated: !!user,
+        knownEmails,
         login,
         logout,
         register,
-        loginPresetRider,
-        loginPresetDriver,
+        loginWithEmail,
+        findKnownUser,
+        demoLogin,
         switchRole,
         addFunds,
         creditDriverEarnings,

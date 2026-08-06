@@ -1,6 +1,6 @@
 # 📱 Rush Rideshare — Interactive Demo Guide
 
-Welcome to the **Rush Investor & Technical Demo Guide**. This document walks through all live features, state transitions, and test scenarios for reviewing the Rush Rideshare application.
+Welcome to the **Rush Investor & Technical Demo Guide**. This document walks through the live app, the sign-up experience, and every ride state for reviewing Rush — a human-driven rideshare with fair fares.
 
 ---
 
@@ -10,55 +10,81 @@ Welcome to the **Rush Investor & Technical Demo Guide**. This document walks thr
 
 ---
 
-## 🎯 Key Test Scenarios & Feature Walkthroughs
+## 🚪 1. Welcome / Sign-Up (The Front Door)
 
-### 1. Passenger Ride Lifecycle Test
-1. Open the app on mobile or desktop.
-2. In the **Passenger** view (default):
-   * Select a quick destination chip (e.g. `Downtown Tech Hub`, `Cyber Tower`, or `Skyport West`).
-   * Or tap anywhere on the **Cyber Grid map** to drop custom pickup coordinates (`Grid (x, y)`).
-3. Tap **Choose Tier for [Destination]**.
-4. Observe the 4 ride tiers (*Rush Mini*, *Rush Express*, *Rush Black*, *Rush XL*).
-5. Inspect the **FairFare™ Payout Breakdown Ticker** showing the 88% driver retention vs 12% platform fee.
-6. Tap **Confirm Rush Express**.
-7. On the searching screen:
-   * Tap **⚡ Auto-Match Demo Driver** to simulate instant driver dispatch (*Marcus Vance* in Tesla Model Y).
-8. Observe live route progress on the map.
-9. Tap **Start Ride Demo**, then **Complete Ride**. Notice the fare deduction and completion toast.
+Every visitor lands on the **welcome page** first — no app access without it. This is the "Apple-level" auth gate:
+
+1. See the full-screen brand moment: RUSH logo lockup, "100% Human. 0% Autopilot." pill, and the premium black-car background.
+2. **Two equal paths:**
+   * **Enter an email → Get Started.** New email → name → role (Rider/Driver) → driver branch adds vehicle + **Human Driver Pledge** → animated success → Enter Rush.
+   * **Recognized email** (try `alex.rider@rushtest.com`) → "Welcome back, Alex" → one-tap continue (passwordless, trust-device).
+   * **Explore the Demo** → one-tap preset accounts (*Alex Rivera — Rider*, *Marcus Vance — Driver*).
+3. Logging out (avatar → Account → Log Out) returns to this screen.
+
+**Demo emails to try:** `alex.rider@rushtest.com` (rider), `marcus.driver@rushtest.com` (driver). Any other email creates a fresh account.
 
 ---
 
-### 2. Driver Operator Test
-1. In top header bar, switch the toggle pill from **Passenger** to **Driver**.
-2. Toggle the driver status switch to **Online & Listening**.
-3. View the driver dashboard summary:
-   * Today's Earnings
-   * Completed Trips Count
-   * 88% Keep Rate Confirmation
-4. When a passenger requests a ride (or test request is active), view the live **Nearby Dispatch Request** card.
-5. Tap **Accept Ride ($21.91 Payout)**.
-6. Progress through **Navigate to Pickup** -> **Arrived & Start Ride** -> **Complete Trip & Payout**.
+## 🚗 2. Passenger Ride Lifecycle Test
+
+1. After signing in (or **Explore the Demo → Alex Rivera**), you land on the map with a single **"Where to?"** bar — the primary action.
+2. Pick a saved place (**Home / Work**), a **Recent** destination, or tap **"Where to?"** to search Denver destinations (Union Station, DIA, Red Rocks, Cherry Creek…).
+3. On the **Confirm** sheet, everything is one screen:
+   * Route summary with walking note ("~2 min walk to pickup")
+   * **Pre-selected Rush Standard** with the price most prominent; tap **Change** to compare Express/XL
+   * **FairFare chip**: "88% of your fare goes to your driver" — tap for full breakdown
+   * **"No surge games — the price you see is the price you pay."**
+4. Tap **Request Rush Standard**.
+5. **Honest searching state**: "Matching you with a human driver… usually 2–4 min in your area." After ~6s the copy honestly expands: "Still searching — expanding to nearby neighborhoods."
+   * Tap **⚡ Auto-Match Demo Driver** (*Marcus Vance*, Tesla Model Y) or switch to Driver view to accept manually.
+6. Matched screen shows driver + **"Verified Human"** badge, car, rating, plate. Run **Start Ride Demo → Complete Ride**.
+7. Completed screen: receipt (88% driver payout / 12% platform fee), tip selector, 5-star rating.
 
 ---
 
-### 3. Wallet & Financial Refill Test
-1. Tap **Wallet** in the bottom navigation bar.
-2. Review active rider/driver balance.
-3. Tap test deposit refill chips (**+$25**, **+$50**, **+$100**).
-4. Observe tactile haptic vibration and instant balance updating.
-5. Inspect recent activity transaction ledger.
+## 👨‍✈️ 3. Driver Operator Test
+
+1. Tap the **Rider/Driver** pill in the header (or sign up as a driver).
+2. Toggle **Online & Listening**.
+3. Dashboard: Today's Earnings, Trips, 88% Keep Rate.
+4. Incoming request card shows honest details: **"Rider is 2.1 mi away — about 2–5 min drive to pickup"** and the payout up front.
+5. **Accept Rush Ride** → **Start Ride** → **Complete Ride & Claim Payout** (88% credited to wallet).
 
 ---
 
-### 4. Map Engine & Mode Switching Test
-1. On the top left of the map container, switch between:
-   * **Cyber Grid**: 60 FPS vector map with custom Bezier route calculations, pulse radar scans, and interactive tap-to-pin features.
-   * **Real Map**: Dark-mode inverted OpenStreetMap iframe layer for geographic context.
-2. Notice the **"Map Active"** telemetry indicator badge in top right.
+## 💳 4. Wallet & Financial Test
+
+1. Tap **Wallet** in the bottom nav.
+2. Review balance; tap **+$25 / +$50 / +$100** refill chips (haptic feedback included).
+3. Inspect the transaction ledger.
 
 ---
 
-### 5. PWA Installation (Mobile Safari / Chrome)
-* **iOS Safari**: Tap *Share* -> *Add to Home Screen*.
-* **Android Chrome**: Tap *Install App* or *Add to Home Screen*.
-* Launch in standalone mode to experience zero status-bar browser chrome and native-feel performance.
+## 🗺️ 5. Map Engine & Modes
+
+* **Real Map**: dark-mode OpenStreetMap layer for geographic context (auto-enabled).
+* **Cyber Grid**: offline/fallback vector engine, auto-switched when network is restricted.
+* Tap the map to pin a custom pickup ("Pinned location").
+* "Map Active" telemetry badge in the top-right of the map.
+
+---
+
+## 📲 6. PWA Installation
+
+* **iOS Safari**: Share → *Add to Home Screen*.
+* **Android Chrome**: *Install App* / *Add to Home Screen*.
+* Launches standalone with no browser chrome; background image and app shell precached (~577 KB total).
+
+---
+
+## 🧪 7. Test Checklist
+
+| Scenario | How |
+|---|---|
+| New rider sign-up | Email → name → Rider → success |
+| New driver sign-up | Email → name → Driver → vehicle + pledge → success |
+| Returning user | `alex.rider@rushtest.com` → Welcome back, one tap |
+| Demo presets | Explore the Demo → Alex Rivera / Marcus Vance |
+| Ride request | Where to? → destination → confirm → request |
+| Cross-role demo | Rider requests → header pill → Driver → accept |
+| Logout | Avatar → Account → Log Out → back to welcome |
