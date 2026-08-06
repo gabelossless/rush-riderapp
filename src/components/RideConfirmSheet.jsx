@@ -22,6 +22,7 @@ const usd = (n) => `$${(n || 0).toFixed(2)}`
 export default function RideConfirmSheet({
   pickup,
   destination,
+  basePrice,
   tiers,
   selectedTierId,
   onTierChange,
@@ -35,7 +36,9 @@ export default function RideConfirmSheet({
   const [showFairFare, setShowFairFare] = useState(false)
 
   const tier = tiers.find((t) => t.id === selectedTierId) || tiers[0]
-  const basePrice = destination?.distance ? parseFloat(destination.distance) * 2.2 + 10 : 22.5
+  // basePrice is computed once by the parent (from destination distance) and
+  // passed down, so the fare shown here can never drift from what's actually
+  // charged when the ride is requested.
   const totalFare = Math.round(basePrice * tier.multiplier * 100) / 100
   const DRIVER_PCT = 0.88
 

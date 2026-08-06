@@ -62,10 +62,9 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 
 ## 🗺️ 5. Map Engine & Modes
 
-* **Real Map**: dark-mode OpenStreetMap layer for geographic context (auto-enabled).
-* **Cyber Grid**: offline/fallback vector engine, auto-switched when network is restricted.
+* **Cyber Grid** (default): offline-capable vector engine.
+* **Real Map**: tap the small layer-toggle icon on the map to switch to a dark-mode OpenStreetMap layer; falls back to Cyber Grid automatically if the network is restricted.
 * Tap the map to pin a custom pickup ("Pinned location").
-* "Map Active" telemetry badge in the top-right of the map.
 
 ---
 

@@ -424,7 +424,6 @@ function StepLanding({ email, onEmailChange, onSubmit, onDemo }) {
           Email
         </label>
         <input
-          ref={emailRef}
           type="email"
           inputMode="email"
           autoCapitalize="none"

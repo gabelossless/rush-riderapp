@@ -13,10 +13,10 @@
 
 ## ✨ Key Features & Highlights
 
-### 🚗 1. Dual Operator View System
-Switch seamlessly between **Passenger** and **Driver Operator** views in real-time within a single application frame:
-* **Passenger Mode**: Request rides, compare tier pricing, set pickup/destination coordinates, toggle ride preferences (*Quiet Ride*, *AC Control*, *Express Lane*), and track en-route drivers.
-* **Driver Mode**: Go online/offline, view live nearby ride request broadcasts, place driver bids, start trips, and receive 88% instant payouts.
+### 🚪 1. Auth-Gated Landing & Dual Operator View
+Every visitor lands on a full-screen welcome/sign-up gate first — no app access without it. Email-first flow: a recognized email gets a one-tap "Welcome back," a new email walks through name → role (Rider/Driver) → success, and **Explore the Demo** offers one-tap preset accounts for investors who need to see the product in seconds. Once in, switch seamlessly between **Passenger** and **Driver Operator** views within a single application frame:
+* **Passenger Mode**: Tap **"Where to?"**, pick a saved place or search a destination, then a single **Confirm** sheet shows a pre-selected tier with the price up front (tap *Change* to compare), a collapsible FairFare split, and one **Request** button — no multi-screen tier-compare flow.
+* **Driver Mode**: Go online/offline, view live nearby ride request broadcasts with honest distance/ETA copy, accept and run trips, and receive 88% instant payouts.
 
 ### 💰 2. FairFare™ Payout Architecture
 Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultra-transparent revenue model:
@@ -25,9 +25,9 @@ Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultr
 * **Live FairFare Ticker**: Interactive visual fee split bar displayed on every ride tier confirmation screen.
 
 ### 🗺️ 3. Resilient Multi-Mode Map Engine
-* **Cyber Grid Vector Engine**: Lightweight, offline-capable 60 FPS SVG map with dynamic Bezier route paths, pulse radar scans, animated vehicle telemetry, and tap-to-pin coordinate placement.
-* **Real Map (OpenStreetMap)**: Dark-mode inverted OpenStreetMap iframe layer for live geographic context.
-* **Automatic Load Protection**: Integrated React Error Boundary and a network reachability preflight check (rather than trusting the iframe's own load events, which fire even on a blocked connection) to ensure the map view never crashes or displays a blank screen.
+* **Cyber Grid Vector Engine** (default): Lightweight, offline-capable 60 FPS SVG map with dynamic Bezier route paths, pulse radar scans, animated vehicle telemetry, and tap-to-pin coordinate placement.
+* **Real Map (OpenStreetMap)**: Opt-in via the small layer-toggle icon on the map — a dark-mode inverted OpenStreetMap iframe layer for live geographic context.
+* **Automatic Load Protection**: Integrated React Error Boundary and a network reachability preflight check (rather than trusting the iframe's own load events, which fire even on a blocked connection) to ensure the map view never crashes or displays a blank screen — falls back to the Cyber Grid engine automatically if the network is restricted.
 
 ### 📱 4. Native-Grade Mobile PWA UX
 * **Tactile Haptic Vibrations**: Haptic feedback (`navigator.vibrate`) on tab switches, ride option selection, preset taps, and wallet transactions.
@@ -78,19 +78,19 @@ npm run lint
 
 ## 📋 Investor & Tester Demo Script
 
-1. **Authenticate / Switch Profile**:
-   * Tap **Log In** (or profile avatar in top right header).
-   * Tap **Quick Presets** to log in as **Alex Rivera** (Rider) or **Marcus Vance** (Driver), or create a custom profile.
+1. **Sign In**:
+   * Every visitor lands on the welcome screen first. Tap **Explore the Demo** for one-tap preset accounts — **Alex Rivera** (Rider) or **Marcus Vance** (Driver) — or enter an email to walk the real sign-up flow (`alex.rider@rushtest.com` / `marcus.driver@rushtest.com` are recognized "welcome back" accounts; any other email creates a fresh one).
 2. **Book a Ride (Passenger View)**:
-   * Select a Quick Destination chip (e.g. *Downtown Tech Hub* or *Cyber Tower*).
-   * Tap **Choose Tier for Downtown Tech Hub**.
-   * Compare tiers (*Rush Mini*, *Rush Express*, *Rush Black*, *Rush XL*) and inspect the **FairFare Payout split**.
-   * Tap **Confirm Rush Express**.
+   * Tap **"Where to?"**, then pick a saved place, a recent trip, or search a Denver destination (Union Station, DIA, Red Rocks, Cherry Creek…).
+   * On the **Confirm** sheet, the price for the pre-selected **Rush Standard** tier is front and center — tap **Change** to compare Rush Express / Rush XL, or the **FairFare** chip to see the 88/12 payout split.
+   * Tap **Request Rush Standard**.
 3. **Driver Auto-Match / Live Toggle**:
    * On the searching screen, tap **⚡ Auto-Match Demo Driver** for instant 1-person testing, OR toggle the header pill to **Driver** mode to accept the request live.
 4. **Complete Trip & Check Wallet**:
    * Tap **Start Ride Demo**, then **Complete Ride**.
    * Open **Wallet** from bottom navigation to view test balances and instant deposit refills ($25, $50, $100).
+
+See [DEMO_GUIDE.md](./DEMO_GUIDE.md) for the full walkthrough, including the driver-side flow and a test checklist.
 
 ---
 
