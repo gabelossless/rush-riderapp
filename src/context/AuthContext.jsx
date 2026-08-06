@@ -35,13 +35,16 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  const register = ({ name, email, role }) => {
+  const register = ({ name, email, role, vehicle, plate, pledgeAccepted, humanVerified }) => {
     const initials = name
       .split(' ')
       .map((n) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2) || 'US'
+
+    const now = new Date()
+    const joinedDate = now.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 
     const newUser = {
       id: `usr_${Date.now()}`,
@@ -52,13 +55,15 @@ export function AuthProvider({ children }) {
       walletBalance: role === 'driver' ? 0.0 : 100.0,
       rating: 5.0,
       totalRides: 0,
-      joinedDate: 'Aug 2026',
+      joinedDate,
       ...(role === 'driver' && {
-        car: 'Cyber Roadster — Stealth Black',
-        plate: 'RUSH-DEMO',
+        car: vehicle || 'Tesla Model 3 — Midnight Silver',
+        plate: plate || 'RUSH-NEW',
         todayEarnings: 0,
         todayRides: 0,
         acceptanceRate: '100%',
+        pledgeAccepted: !!pledgeAccepted,
+        humanVerified: !!humanVerified,
       }),
     }
 
