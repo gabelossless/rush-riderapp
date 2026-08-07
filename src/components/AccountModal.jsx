@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, LogOut, Car, User, Wallet, Star, Clock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTrip } from '../context/TripContext'
 import { triggerHaptic } from '../utils/haptics'
 
 /* ------------------------------------------------------------------ */
@@ -11,6 +12,7 @@ import { triggerHaptic } from '../utils/haptics'
 
 export default function AccountModal({ isOpen, onClose }) {
   const { user, logout, switchRole } = useAuth()
+  const { resetTripState } = useTrip()
 
   if (!user) return null
 
@@ -18,6 +20,7 @@ export default function AccountModal({ isOpen, onClose }) {
 
   const handleLogout = () => {
     triggerHaptic('medium')
+    resetTripState()
     logout()
     onClose()
   }

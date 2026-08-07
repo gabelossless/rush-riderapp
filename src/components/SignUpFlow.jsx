@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { triggerHaptic } from '../utils/haptics'
+import useTimeout from '../utils/useTimeout'
 
 /* ------------------------------------------------------------------ */
 /*  SignUpFlow — the app's front door.                                 */
@@ -35,9 +36,12 @@ export default function SignUpFlow({ onComplete }) {
   const [welcomeUser, setWelcomeUser] = useState(null)
 
   const emailRef = useRef(null)
+  const checkTimer = useRef(null)
+
+  const timers = useTimeout()
 
   useEffect(() => {
-    if (step === 'name') emailRef.current?.focus()
+    if (step === 'name') emailRef.current?.focus({ preventScroll: true })
   }, [step])
 
   const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim())
@@ -50,7 +54,7 @@ export default function SignUpFlow({ onComplete }) {
     triggerHaptic('light')
     setStep('checking')
     // Simulated identity check — the "Apple moment" of silent auth.
-    setTimeout(() => {
+    checkTimer.current = timers.set(() => {
       const known = findKnownUser(email)
       if (known) {
         setWelcomeUser(known)
@@ -114,6 +118,10 @@ export default function SignUpFlow({ onComplete }) {
 
   const goBack = () => {
     triggerHaptic('light')
+    if (checkTimer.current) {
+      timers.clear(checkTimer.current)
+      checkTimer.current = null
+    }
     const map = {
       checking: 'landing',
       'welcome-back': 'landing',

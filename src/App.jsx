@@ -20,6 +20,7 @@ import {
 
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { TripProvider, useTrip } from './context/TripContext'
+import useTimeout from './utils/useTimeout'
 import AccountModal from './components/AccountModal'
 import LocationSearch from './components/LocationSearch'
 import WalletModal from './components/WalletModal'
@@ -179,6 +180,7 @@ function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
 function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const { user, deductRiderFare } = useAuth()
   const { currentTrip, tripHistory, requestRide, cancelRequest, acceptRide, startRide, completeRide, updateProgress } = useTrip()
+  const timers = useTimeout()
 
   const prevTripId = useRef(null)
 
@@ -277,7 +279,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     triggerHaptic('medium')
     if (user && user.walletBalance < totalFare) {
       setDemoNotification('Insufficient wallet balance. Please add demo funds.')
-      setTimeout(() => setDemoNotification(null), 3000)
+      timers.set(() => setDemoNotification(null), 3000)
       onOpenWallet()
       return
     }
@@ -314,7 +316,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     triggerHaptic('success')
     completeRide()
     setDemoNotification(`Trip Complete! Fare of ${usd(currentTrip?.fare)} processed.`)
-    setTimeout(() => setDemoNotification(null), 3500)
+    timers.set(() => setDemoNotification(null), 3500)
   }
 
   const finishCompleted = () => {
@@ -725,6 +727,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 function DriverViewContent({ onImmersiveChange }) {
   const { user, creditDriverEarnings } = useAuth()
   const { currentTrip, acceptRide, startRide, completeRide, cancelRequest } = useTrip()
+  const timers = useTimeout()
 
   const [online, setOnline] = useState(true)
   const [toast, setToast] = useState(null)
@@ -765,7 +768,7 @@ function DriverViewContent({ onImmersiveChange }) {
     creditDriverEarnings(fare)
     completeRide()
     setToast(`Trip Completed! +${usd(fare)} added to wallet`)
-    setTimeout(() => setToast(null), 3500)
+    timers.set(() => setToast(null), 3500)
   }
 
   return (
@@ -949,6 +952,7 @@ function AppShell({
       <WalletModal isOpen={isWalletOpen} onClose={() => setIsWalletOpen(false)} />
       <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
+      <PWAInstallPrompt />
     </div>
   )
 }
@@ -1003,7 +1007,6 @@ export default function App() {
       <TripProvider>
         <div className="relative h-[100dvh] w-full overflow-hidden bg-void font-sans">
           <RootGate />
-          <PWAInstallPrompt />
         </div>
       </TripProvider>
     </AuthProvider>

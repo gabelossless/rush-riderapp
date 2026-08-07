@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, X, Share, PlusSquare, Sparkles, CheckCircle2 } from 'lucide-react'
 import { triggerHaptic } from '../utils/haptics'
+import useTimeout from '../utils/useTimeout'
 
 export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
@@ -9,6 +10,7 @@ export default function PWAInstallPrompt() {
   const [isIOS, setIsIOS] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
   const [installedSuccess, setInstalledSuccess] = useState(false)
+  const timers = useTimeout()
 
   useEffect(() => {
     // 1. Detect if running in standalone mode (already installed)
@@ -62,7 +64,7 @@ export default function PWAInstallPrompt() {
 
     if (outcome === 'accepted') {
       setInstalledSuccess(true)
-      setTimeout(() => setShowPrompt(false), 2000)
+      timers.set(() => setShowPrompt(false), 2000)
     }
     setDeferredPrompt(null)
   }
@@ -86,7 +88,7 @@ export default function PWAInstallPrompt() {
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 80, opacity: 0, scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-        className="fixed bottom-4 inset-x-4 z-50 mx-auto max-w-md"
+        className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] inset-x-4 z-50 mx-auto max-w-md"
       >
         <div className="relative overflow-hidden rounded-3xl border border-white/15 bg-[#0A0D15]/92 p-4 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl">
           <div className="relative z-10 flex items-start justify-between gap-3">

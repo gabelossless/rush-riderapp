@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, MessageSquare, Send, CheckCircle2, Star, Bug, Sparkles } from 'lucide-react'
+import useTimeout from '../utils/useTimeout'
 
 export default function FeedbackModal({ isOpen, onClose }) {
   const [rating, setRating] = useState(5)
   const [category, setCategory] = useState('feature') // 'feature' | 'bug' | 'ux'
   const [comment, setComment] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const timers = useTimeout()
 
   const handleSubmit = (e) => {
     e.preventDefault()
     setSubmitted(true)
-    setTimeout(() => {
+    timers.set(() => {
       setSubmitted(false)
       setComment('')
       onClose()

@@ -2,17 +2,19 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Wallet, Plus, ArrowUpRight, ArrowDownLeft, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import useTimeout from '../utils/useTimeout'
 import { triggerHaptic } from '../utils/haptics'
 
 export default function WalletModal({ isOpen, onClose }) {
   const { user, addFunds } = useAuth()
   const [successToast, setSuccessToast] = useState(false)
+  const timers = useTimeout()
 
   const handleAddFunds = (amt) => {
     triggerHaptic('success')
     addFunds(amt)
     setSuccessToast(true)
-    setTimeout(() => setSuccessToast(false), 2500)
+    timers.set(() => setSuccessToast(false), 2500)
   }
 
   const usd = (n) => `$${(n || 0).toFixed(2)}`

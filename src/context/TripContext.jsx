@@ -91,6 +91,10 @@ export function TripProvider({ children }) {
     }
   }
 
+  const resetTripState = () => {
+    setCurrentTrip(null)
+  }
+
   const acceptRide = (driverInfo) => {
     if (!currentTrip) return
     setCurrentTrip((prev) => ({
@@ -147,6 +151,7 @@ export function TripProvider({ children }) {
         tripHistory,
         requestRide,
         cancelRequest,
+        resetTripState,
         acceptRide,
         startRide,
         updateProgress,
