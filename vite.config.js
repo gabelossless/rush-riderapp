@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.js'],
+    globals: true,
+  },
   server: {
     // Bind to 0.0.0.0 (not just localhost) and accept any Host header so the
     // dev server is reachable through cloud/remote preview proxies (Claude
