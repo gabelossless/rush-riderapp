@@ -59,6 +59,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
+        // The MapEngine chunk is large and the map is network-dependent
+        // (remote tiles) anyway — keep it out of the precache so the app
+        // shell + landing page install instantly and the map loads on demand.
+        globIgnores: ['**/assets/MapEngine-*'],
         cleanupOutdatedCaches: true,
         navigateFallback: '/index.html',
       },

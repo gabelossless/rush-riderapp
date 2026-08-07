@@ -54,7 +54,7 @@ export const PRESET_DESTINATIONS = [
     distance: '2.1 mi',
     icon: Building2,
     tint: '#38BDF8',
-    coords: { x: 322, y: 92 },
+    latlng: { lat: 39.7539, lng: -105.0002 },
   },
   {
     id: 'dest_2',
@@ -65,7 +65,7 @@ export const PRESET_DESTINATIONS = [
     distance: '24.8 mi',
     icon: Plane,
     tint: '#6366F1',
-    coords: { x: 350, y: 40 },
+    latlng: { lat: 39.8561, lng: -104.6737 },
   },
   {
     id: 'dest_3',
@@ -76,7 +76,7 @@ export const PRESET_DESTINATIONS = [
     distance: '1.6 mi',
     icon: Landmark,
     tint: '#34D399',
-    coords: { x: 170, y: 200 },
+    latlng: { lat: 39.7412, lng: -104.9963 },
   },
   {
     id: 'dest_4',
@@ -87,7 +87,7 @@ export const PRESET_DESTINATIONS = [
     distance: '5.8 mi',
     icon: ShoppingBag,
     tint: '#FF00A0',
-    coords: { x: 90, y: 120 },
+    latlng: { lat: 39.7182, lng: -104.9525 },
   },
   {
     id: 'dest_5',
@@ -98,7 +98,7 @@ export const PRESET_DESTINATIONS = [
     distance: '19.2 mi',
     icon: Palmtree,
     tint: '#FFD700',
-    coords: { x: 50, y: 420 },
+    latlng: { lat: 39.6656, lng: -105.2057 },
   },
 ]
 
@@ -112,7 +112,7 @@ export const SAVED_PLACES = [
     distance: '1.2 mi',
     icon: Home,
     tint: '#38BDF8',
-    coords: { x: 300, y: 120 },
+    latlng: { lat: 39.7526, lng: -105.0047 },
   },
   {
     id: 'place_work',
@@ -123,8 +123,19 @@ export const SAVED_PLACES = [
     distance: '1.8 mi',
     icon: Briefcase,
     tint: '#818CF8',
-    coords: { x: 200, y: 180 },
+    latlng: { lat: 39.7474, lng: -104.9902 },
   },
+]
+
+/* Phase 2 — surge anchors around metro Denver. Rendered as pulsing
+   warm zones on the live map. */
+export const SURGE_ZONES = [
+  { id: 'surge_1', name: 'Denver International Airport', latlng: { lat: 39.8561, lng: -104.6737 } },
+  { id: 'surge_2', name: 'Union Station', latlng: { lat: 39.7539, lng: -105.0002 } },
+  { id: 'surge_3', name: 'Coors Field', latlng: { lat: 39.7559, lng: -104.9942 } },
+  { id: 'surge_4', name: 'Red Rocks Amphitheatre', latlng: { lat: 39.6656, lng: -105.2057 } },
+  { id: 'surge_5', name: '16th Street Mall', latlng: { lat: 39.7494, lng: -104.9965 } },
+  { id: 'surge_6', name: 'Cherry Creek', latlng: { lat: 39.7182, lng: -104.9525 } },
 ]
 
 export const RIDE_TIERS = [

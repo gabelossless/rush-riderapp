@@ -24,10 +24,12 @@ Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultr
 * **12% Fixed Platform Fee**: Covers platform infrastructure, safety insurance, and dispatch telemetry.
 * **Live FairFare Ticker**: Interactive visual fee split bar displayed on every ride tier confirmation screen.
 
-### 🗺️ 3. Resilient Multi-Mode Map Engine
-* **Cyber Grid Vector Engine** (default): Lightweight, offline-capable 60 FPS SVG map with dynamic Bezier route paths, pulse radar scans, animated vehicle telemetry, and tap-to-pin coordinate placement.
-* **Real Map (OpenStreetMap)**: Opt-in via the small layer-toggle icon on the map — a dark-mode inverted OpenStreetMap iframe layer for live geographic context.
-* **Automatic Load Protection**: Integrated React Error Boundary and a network reachability preflight check (rather than trusting the iframe's own load events, which fire even on a blocked connection) to ensure the map view never crashes or displays a blank screen — falls back to the Cyber Grid engine automatically if the network is restricted.
+### 🗺️ 3. Real Denver Map with Live Fleet
+* **MapLibre GL + OpenFreeMap**: real vector map of **Denver & Colorado** in a dark style — free forever, no API key required.
+* **GPS Boot**: flies to your actual location on entry; if GPS is denied, reveals all of Colorado with a **"Focus Denver"** pill to zoom back in.
+* **Live Fleet (40+ cars)**: simulated Rush drivers roam the metro continuously; **surge zones** pulse at six anchors (DIA, Union Station, Coors Field, Red Rocks, 16th St Mall, Cherry Creek).
+* **Real Driving Routes**: pickup → destination routed through the public OSRM engine with the car animating along actual roads.
+* **Automatic Fallback**: if WebGL/network is unavailable, the app auto-switches to a simplified Denver grid engine — never a blank screen.
 
 ### 📱 4. Native-Grade Mobile PWA UX
 * **Tactile Haptic Vibrations**: Haptic feedback (`navigator.vibrate`) on tab switches, ride option selection, preset taps, and wallet transactions.
@@ -43,6 +45,7 @@ Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultr
 * **Styling**: Vanilla CSS + TailwindCSS 3.4
 * **Animations**: Framer Motion 13
 * **Icons**: Lucide React Icons
+* **Mapping**: MapLibre GL 6 + OpenFreeMap (tiles) + OSRM (routing)
 * **PWA Engine**: `vite-plugin-pwa` + Workbox
 * **Linter**: Oxlint
 

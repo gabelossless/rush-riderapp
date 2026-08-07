@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowRight,
@@ -22,7 +22,6 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { TripProvider, useTrip } from './context/TripContext'
 import AccountModal from './components/AccountModal'
 import LocationSearch from './components/LocationSearch'
-import MapEngine from './components/MapEngine'
 import WalletModal from './components/WalletModal'
 import HistoryModal from './components/HistoryModal'
 import FeedbackModal from './components/FeedbackModal'
@@ -34,6 +33,18 @@ import { triggerHaptic } from './utils/haptics'
 
 const usd = (n) => `$${(n || 0).toFixed(2)}`
 const DRIVER_PCT = 0.88
+
+// MapLibre is a large dependency — lazy-load it so the auth landing page
+// and app shell stay instant. The map is network-dependent anyway.
+const MapEngine = lazy(() => import('./components/MapEngine'))
+
+function MapShell(props) {
+  return (
+    <Suspense fallback={<div className="absolute inset-0 bg-[#0A0D15]" />}>
+      <MapEngine {...props} />
+    </Suspense>
+  )
+}
 
 /* ------------------------------------------------------------------ */
 /*  Small UI atoms                                                     */
@@ -175,8 +186,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const [destination, setDestination] = useState(null)
   const [selectedTier, setSelectedTier] = useState('standard')
   const [stage, setStage] = useState('home') // home | dest | confirm | searching | matched | completed
-  const [pickupCoords, setPickupCoords] = useState({ x: 80, y: 360 })
-  const [dropoffCoords, setDropoffCoords] = useState({ x: 322, y: 92 })
+  const [pickupCoords, setPickupCoords] = useState({ lat: 39.7526, lng: -105.0047 })
+  const [dropoffCoords, setDropoffCoords] = useState({ lat: 39.7539, lng: -105.0002 })
   const [demoNotification, setDemoNotification] = useState(null)
   const [searchNote, setSearchNote] = useState(false)
   const [tip, setTip] = useState(null)
@@ -258,7 +269,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const handleSelectDestination = (dest) => {
     triggerHaptic('light')
     setDestination(dest)
-    if (dest.coords) setDropoffCoords(dest.coords)
+    if (dest.latlng) setDropoffCoords(dest.latlng)
     setStage('confirm')
   }
 
@@ -345,7 +356,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
       {/* Interactive Map */}
       <div className="absolute inset-0">
-        <MapEngine
+        <MapShell
           carProgress={currentTrip?.progress || 0}
           radar={stage === 'searching'}
           showRoute={stage !== 'home'}
@@ -760,7 +771,7 @@ function DriverViewContent({ onImmersiveChange }) {
   return (
     <div className="relative h-full overflow-y-auto no-scrollbar">
       <div className="absolute inset-0">
-        <MapEngine showRoute={Boolean(currentTrip)} radar={online && !currentTrip} />
+        <MapShell showRoute={Boolean(currentTrip)} radar={online && !currentTrip} />
       </div>
 
       <div className="relative z-10 mx-auto min-h-full w-full max-w-lg p-3">

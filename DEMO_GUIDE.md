@@ -60,11 +60,15 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 
 ---
 
-## 🗺️ 5. Map Engine & Modes
+## 🗺️ 5. Map Engine — Real Denver, Live Fleet
 
-* **Cyber Grid** (default): offline-capable vector engine.
-* **Real Map**: tap the small layer-toggle icon on the map to switch to a dark-mode OpenStreetMap layer; falls back to Cyber Grid automatically if the network is restricted.
-* Tap the map to pin a custom pickup ("Pinned location").
+* **Real vector map**: MapLibre GL + OpenFreeMap dark style — a real map of **Denver & Colorado**, free forever, no API key.
+* **GPS boot**: on app entry the map flies to your actual location. If GPS is denied, it reveals **all of Colorado** with a **"Focus Denver"** pill to zoom back in.
+* **Live fleet (40+ cars)**: simulated Rush drivers roam the metro continuously — the map feels alive.
+* **Surge zones**: six pulsing warm anchors (DIA, Union Station, Coors Field, Red Rocks, 16th St Mall, Cherry Creek).
+* **Real driving routes**: pickup → destination is routed through the public OSRM engine (Union Station → DIA is a real ~42 km drive), with the car animating along actual roads.
+* **Tap to pin**: tap anywhere on the map to set a custom pickup ("Pinned location").
+* **Offline fallback**: if WebGL/network is unavailable, the app auto-switches to a simplified Denver grid engine.
 
 ---
 
@@ -72,7 +76,7 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 
 * **iOS Safari**: Share → *Add to Home Screen*.
 * **Android Chrome**: *Install App* / *Add to Home Screen*.
-* Launches standalone with no browser chrome; background image and app shell precached (~577 KB total).
+* Launches standalone with no browser chrome; background image and app shell precached (~566 KB total; map loads on demand).
 
 ---
 

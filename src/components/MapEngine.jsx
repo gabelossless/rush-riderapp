@@ -1,11 +1,24 @@
 import React, { useState, useMemo, useRef, useEffect, Component } from 'react'
-import { Layers, Compass, LocateFixed, Eye, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Map as MapLibreMap, Marker, NavigationControl, AttributionControl, LngLatBounds } from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
+import { AlertTriangle, Eye, LocateFixed, RefreshCw } from 'lucide-react'
+import { SURGE_ZONES } from '../data/mockData'
 
 const clamp01 = (n) => Math.min(1, Math.max(0, Number(n) || 0))
 
-/**
- * Class Error Boundary to catch any unexpected map rendering/SVG errors
- */
+const DENVER_CENTER = { lat: 39.7392, lng: -104.9903 }
+const COLORADO_BOUNDS = [
+  [-109.1, 36.9],
+  [-102.0, 41.0],
+]
+const FLEET_COUNT = 40
+const OSRM_BASE = 'https://router.project-osrm.org'
+const STYLE_URL = 'https://tiles.openfreemap.org/styles/fiord'
+
+/* ------------------------------------------------------------------ */
+/*  Error boundary — catches any map/WebGL crash and offers recovery   */
+/* ------------------------------------------------------------------ */
+
 class MapErrorBoundary extends Component {
   constructor(props) {
     super(props)
@@ -42,353 +55,614 @@ class MapErrorBoundary extends Component {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Geometry helpers                                                   */
+/* ------------------------------------------------------------------ */
+
+function cumulativeDistances(coords) {
+  const cum = [0]
+  for (let i = 1; i < coords.length; i++) {
+    const [lng1, lat1] = coords[i - 1]
+    const [lng2, lat2] = coords[i]
+    cum.push(cum[i - 1] + Math.hypot(lng2 - lng1, lat2 - lat1))
+  }
+  return cum
+}
+
+function pointAtFraction(coords, cum, fraction) {
+  if (!coords || coords.length === 0) return null
+  if (coords.length === 1 || !cum) return coords[0]
+  const total = cum[cum.length - 1] || 1
+  const target = total * clamp01(fraction)
+  for (let i = 1; i < cum.length; i++) {
+    if (cum[i] >= target) {
+      const seg = cum[i] - cum[i - 1] || 1
+      const f = (target - cum[i - 1]) / seg
+      const a = coords[i - 1]
+      const b = coords[i]
+      return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]
+    }
+  }
+  return coords[coords.length - 1]
+}
+
+function makeMarkerEl(innerHtml, className) {
+  const el = document.createElement('div')
+  el.className = className
+  el.innerHTML = innerHtml
+  return el
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main map component                                                 */
+/* ------------------------------------------------------------------ */
+
 function MapEngineContent({
   carProgress = 0,
   radar = false,
   showRoute = false,
-  pickupCoords = { x: 80, y: 360 },
-  dropoffCoords = { x: 322, y: 92 },
+  pickupCoords = null,
+  dropoffCoords = null,
   onMapClick,
 }) {
-  const [mapMode, setMapMode] = useState('cyber') // 'cyber' | 'real'
-  const [iframeStatus, setIframeStatus] = useState('loading') // 'loading' | 'loaded' | 'error'
-  const routeRef = useRef(null)
-  const [len, setLen] = useState(0)
+  const containerRef = useRef(null)
+  const mapRef = useRef(null)
+  const [mapState, setMapState] = useState('loading') // loading | ready | error
+  const [showFocusDenver, setShowFocusDenver] = useState(false)
+  const [routeReady, setRouteReady] = useState(false)
 
-  // Defensive sanitization of pickup/dropoff coordinates
-  const safePickup = useMemo(() => ({
-    x: Number.isFinite(Number(pickupCoords?.x)) ? Number(pickupCoords.x) : 80,
-    y: Number.isFinite(Number(pickupCoords?.y)) ? Number(pickupCoords.y) : 360,
-  }), [pickupCoords?.x, pickupCoords?.y])
+  const routeGeoRef = useRef(null)
+  const routeCumRef = useRef(null)
+  const pickupMarkerRef = useRef(null)
+  const dropoffMarkerRef = useRef(null)
+  const carMarkerRef = useRef(null)
+  const userMarkerRef = useRef(null)
+  const radarMarkerRef = useRef(null)
+  const surgeMarkersRef = useRef([])
+  const fleetRef = useRef(null)
+  const gpsDoneRef = useRef(false)
 
-  const safeDropoff = useMemo(() => ({
-    x: Number.isFinite(Number(dropoffCoords?.x)) ? Number(dropoffCoords.x) : 322,
-    y: Number.isFinite(Number(dropoffCoords?.y)) ? Number(dropoffCoords.y) : 92,
-  }), [dropoffCoords?.x, dropoffCoords?.y])
+  const pickupKey = pickupCoords ? `${pickupCoords.lat},${pickupCoords.lng}` : ''
+  const dropoffKey = dropoffCoords ? `${dropoffCoords.lat},${dropoffCoords.lng}` : ''
 
-  // Calculated mathematical distance fallback for SVG total length
-  const fallbackLen = useMemo(() => {
-    const dx = safeDropoff.x - safePickup.x
-    const dy = safeDropoff.y - safePickup.y
-    return Math.hypot(dx, dy) * 1.3
-  }, [safePickup, safeDropoff])
-
-  // Dynamic bezier path string generated between pickupCoords and dropoffCoords
-  const routePath = useMemo(() => {
-    const { x: x1, y: y1 } = safePickup
-    const { x: x2, y: y2 } = safeDropoff
-    const cx1 = x1 + (x2 - x1) * 0.3
-    const cy1 = y1 - 80
-    const cx2 = x1 + (x2 - x1) * 0.7
-    const cy2 = y2 + 60
-    return `M ${x1} ${y1} C ${cx1} ${cy1} ${cx2} ${cy2} ${x2} ${y2}`
-  }, [safePickup, safeDropoff])
-
-  // Update SVG total path length safely
+  /* ---------- Map creation ---------- */
   useEffect(() => {
-    const el = routeRef.current
-    if (el && typeof el.getTotalLength === 'function') {
-      try {
-        const l = el.getTotalLength()
-        if (Number.isFinite(l) && l > 0) {
-          setLen(l)
-          return
-        }
-      } catch (err) {
-        console.warn('SVG getTotalLength warning:', err)
-      }
+    const container = containerRef.current
+    if (!container) return
+
+    let map = null
+    try {
+      map = new MapLibreMap({
+        container,
+        style: STYLE_URL,
+        center: [DENVER_CENTER.lng, DENVER_CENTER.lat],
+        zoom: 11.5,
+        attributionControl: false,
+        fadeDuration: 120,
+      })
+      mapRef.current = map
+    } catch (err) {
+      console.error('WebGL/MapLibre init failed:', err)
+      setMapState('error')
+      return
     }
-    setLen(fallbackLen)
-  }, [routePath, fallbackLen, showRoute])
 
-  // Network preflight check for Real Map view.
-  // A blocked/reset connection to a cross-origin host still lets the iframe
-  // fire `onLoad` (the browser "loads" its own internal error page) — same-origin
-  // policy also blocks us from inspecting that page afterwards to tell the
-  // difference. So instead of trusting the iframe's own load events, probe
-  // reachability with a real fetch() first: a blocked network genuinely
-  // rejects the fetch promise, which lets us skip ever mounting the iframe
-  // and show the offline Cyber Grid fallback instead of a blank/black pane.
-  useEffect(() => {
-    if (mapMode !== 'real') return
-    setIframeStatus('loading')
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 4000)
+    map.addControl(new NavigationControl({ showCompass: false }), 'top-left')
+    map.addControl(
+      new AttributionControl({ compact: true }),
+      'bottom-right'
+    )
 
-    fetch('https://tile.openstreetmap.org/0/0/0.png', { mode: 'no-cors', signal: controller.signal })
-      .then(() => setIframeStatus('loaded'))
-      .catch(() => setIframeStatus('error'))
-      .finally(() => clearTimeout(timer))
+    map.on('load', () => {
+      // Route layers (hidden until data arrives)
+      map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: null, properties: {} } })
+      map.addLayer({
+        id: 'route-glow',
+        type: 'line',
+        source: 'route',
+        paint: {
+          'line-color': '#38BDF8',
+          'line-width': 9,
+          'line-opacity': 0.18,
+          'line-cap': 'round',
+        },
+      })
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        paint: {
+          'line-width': 4,
+          'line-color': [
+            'interpolate',
+            ['linear'],
+            ['line-progress'],
+            0,
+            '#38BDF8',
+            1,
+            '#818CF8',
+          ],
+          'line-cap': 'round',
+        },
+      })
+
+      // Phase 2 — live fleet layer
+      map.addSource('fleet', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addLayer({
+        id: 'fleet',
+        type: 'circle',
+        source: 'fleet',
+        paint: {
+          'circle-radius': 3.5,
+          'circle-color': '#38BDF8',
+          'circle-opacity': 0.55,
+          'circle-blur': 0.15,
+        },
+      })
+
+      // Pickup / dropoff / car DOM markers
+      pickupMarkerRef.current = new Marker({
+        element: makeMarkerEl(
+          '<span class="rush-marker-dot"></span><span class="rush-marker-ring"></span>',
+          'rush-marker pickup'
+        ),
+      }).setLngLat([DENVER_CENTER.lng, DENVER_CENTER.lat]).addTo(map)
+
+      dropoffMarkerRef.current = new Marker({
+        element: makeMarkerEl('<span class="rush-marker-square"></span>', 'rush-marker dropoff'),
+      }).setLngLat([DENVER_CENTER.lng, DENVER_CENTER.lat]).addTo(map)
+
+      carMarkerRef.current = new Marker({
+        element: makeMarkerEl('<span class="rush-car-dot"></span>', 'rush-car'),
+      }).setLngLat([DENVER_CENTER.lng, DENVER_CENTER.lat]).addTo(map)
+
+      // Surge zones — pulsing warm rings (Phase 2)
+      SURGE_ZONES.forEach((z) => {
+        const m = new Marker({
+          element: makeMarkerEl(
+            '<span class="rush-surge-ring"></span><span class="rush-surge-core"></span>',
+            'rush-surge'
+          ),
+        })
+          .setLngLat([z.latlng.lng, z.latlng.lat])
+          .addTo(map)
+        surgeMarkersRef.current.push(m)
+      })
+
+      setMapState('ready')
+    })
+
+    map.on('error', () => {
+      // Tolerate style/tile hiccups briefly; hard-fail only if the style
+      // itself cannot load (offline / blocked network).
+      if (!map.loaded() && mapStateRef.current === 'loading') {
+        setMapState('error')
+      }
+    })
 
     return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
-  }, [mapMode])
-
-  // Interpolated car position along Bezier route with math fallback
-  const carPos = useMemo(() => {
-    const prog = clamp01(carProgress)
-    if (routeRef.current && len > 0 && typeof routeRef.current.getPointAtLength === 'function') {
       try {
-        const p = routeRef.current.getPointAtLength(len * prog)
-        if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
-          return { x: p.x, y: p.y }
-        }
+        map.remove()
       } catch {
-        // Fallback to math linear interpolation below
+        /* noop */
       }
+      mapRef.current = null
+      gpsDoneRef.current = false
     }
-    return {
-      x: safePickup.x + (safeDropoff.x - safePickup.x) * prog,
-      y: safePickup.y + (safeDropoff.y - safePickup.y) * prog,
-    }
-  }, [carProgress, len, safePickup, safeDropoff])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const handleSvgClick = (e) => {
-    if (!onMapClick) return
-    try {
-      const svg = e.currentTarget
-      const rect = svg.getBoundingClientRect()
-      if (!rect.width || !rect.height) return
-      const x = Math.round(Math.max(10, Math.min(390, ((e.clientX - rect.left) / rect.width) * 400)))
-      const y = Math.round(Math.max(10, Math.min(460, ((e.clientY - rect.top) / rect.height) * 470)))
-      onMapClick({ x, y })
-    } catch (err) {
-      console.warn('Map click handler error:', err)
+  // Stable read of mapState inside the map error handler
+  const mapStateRef = useRef(mapState)
+  useEffect(() => {
+    mapStateRef.current = mapState
+  }, [mapState])
+
+  const map = mapRef.current
+
+  /* ---------- Tap-to-pin ---------- */
+  useEffect(() => {
+    if (!map || mapState !== 'ready') return
+    const handler = (e) => {
+      if (!onMapClick) return
+      onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })
     }
+    map.on('click', handler)
+    return () => map.off('click', handler)
+  }, [map, mapState, onMapClick])
+
+  /* ---------- GPS boot ---------- */
+  useEffect(() => {
+    if (!map || mapState !== 'ready' || gpsDoneRef.current) return
+    gpsDoneRef.current = true
+
+    if (!navigator.geolocation) {
+      setShowFocusDenver(true)
+      map.fitBounds(COLORADO_BOUNDS, { duration: 1800, padding: 40 })
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords
+        map.flyTo({ center: [longitude, latitude], zoom: 12.5, duration: 1800 })
+        if (userMarkerRef.current) {
+          userMarkerRef.current.setLngLat([longitude, latitude])
+        } else {
+          userMarkerRef.current = new Marker({
+            element: makeMarkerEl('<span class="rush-user-dot"></span>', 'rush-user'),
+          })
+            .setLngLat([longitude, latitude])
+            .addTo(map)
+        }
+      },
+      () => {
+        // GPS denied/unavailable — Colorado-wide reveal with a focus pill
+        setShowFocusDenver(true)
+        map.fitBounds(COLORADO_BOUNDS, { duration: 1800, padding: 40 })
+      },
+      { timeout: 4000, maximumAge: 60000 }
+    )
+  }, [map, mapState])
+
+  const focusDenver = () => {
+    if (!map) return
+    setShowFocusDenver(false)
+    map.flyTo({ center: [DENVER_CENTER.lng, DENVER_CENTER.lat], zoom: 11.5, duration: 1400 })
   }
+
+  /* ---------- Route fetching (OSRM) ---------- */
+  useEffect(() => {
+    if (!map || mapState !== 'ready') return
+    if (!showRoute || !pickupCoords || !dropoffCoords) {
+      if (map.getSource('route')) {
+        map.getSource('route').setData({ type: 'Feature', geometry: null, properties: {} })
+      }
+      routeGeoRef.current = null
+      routeCumRef.current = null
+      setRouteReady(false)
+      return
+    }
+
+    const { lat: pLat, lng: pLng } = pickupCoords
+    const { lat: dLat, lng: dLng } = dropoffCoords
+    const controller = new AbortController()
+    const url = `${OSRM_BASE}/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`
+
+    fetch(url, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('OSRM ' + r.status))))
+      .then((data) => {
+        if (!data || data.code !== 'Ok' || !data.routes?.length) return
+        const geometry = data.routes[0].geometry
+        if (!geometry?.coordinates?.length) return
+        routeGeoRef.current = geometry
+        routeCumRef.current = cumulativeDistances(geometry.coordinates)
+        map.getSource('route')?.setData({ type: 'Feature', geometry, properties: {} })
+
+        // Fit the route into view
+        const bounds = new LngLatBounds()
+        geometry.coordinates.forEach((c) => bounds.extend(c))
+        map.fitBounds(bounds, { padding: 70, duration: 900, maxZoom: 13.5 })
+        setRouteReady(true)
+      })
+      .catch((err) => {
+        if (err?.name === 'AbortError') return
+        console.warn('OSRM route fetch failed:', err)
+      })
+
+    return () => controller.abort()
+  }, [map, mapState, showRoute, pickupKey, dropoffKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- Marker positions ---------- */
+  useEffect(() => {
+    if (!map || mapState !== 'ready') return
+    if (pickupCoords) pickupMarkerRef.current?.setLngLat([pickupCoords.lng, pickupCoords.lat])
+    const dropEl = dropoffMarkerRef.current?.getElement()
+    const carEl = carMarkerRef.current?.getElement()
+    if (dropoffCoords && showRoute) {
+      dropoffMarkerRef.current?.setLngLat([dropoffCoords.lng, dropoffCoords.lat])
+      if (dropEl) dropEl.style.display = 'block'
+    } else if (dropEl) {
+      dropEl.style.display = 'none'
+    }
+    if (!showRoute && carEl) carEl.style.display = 'none'
+  }, [map, mapState, pickupKey, dropoffKey, showRoute]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- Car animation along the real route ---------- */
+  useEffect(() => {
+    if (!map || mapState !== 'ready' || !routeGeoRef.current || !showRoute) return
+    const coords = routeGeoRef.current.coordinates
+    const cum = routeCumRef.current
+    const pt = pointAtFraction(coords, cum, carProgress)
+    const carEl = carMarkerRef.current?.getElement()
+    if (pt) {
+      carMarkerRef.current?.setLngLat(pt)
+      if (carEl) carEl.style.display = 'block'
+    }
+  }, [map, mapState, carProgress, routeReady, showRoute]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- Radar pulse while searching ---------- */
+  useEffect(() => {
+    if (!map || mapState !== 'ready') return
+    const el = radarMarkerRef.current?.getElement()
+    if (radar && pickupCoords) {
+      if (!radarMarkerRef.current) {
+        radarMarkerRef.current = new Marker({
+          element: makeMarkerEl('<span class="rush-radar-ring"></span>', 'rush-radar'),
+        }).addTo(map)
+      }
+      radarMarkerRef.current.setLngLat([pickupCoords.lng, pickupCoords.lat])
+      radarMarkerRef.current.getElement().style.display = 'block'
+    } else if (el) {
+      el.style.display = 'none'
+    }
+  }, [map, mapState, radar, pickupKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- Phase 2: live fleet animation ---------- */
+  useEffect(() => {
+    if (!map || mapState !== 'ready') return
+
+    const cars = Array.from({ length: FLEET_COUNT }, () => ({
+      lat: DENVER_CENTER.lat + (Math.random() - 0.5) * 0.16,
+      lng: DENVER_CENTER.lng + (Math.random() - 0.5) * 0.22,
+      heading: Math.random() * Math.PI * 2,
+      speed: 0.00009 + Math.random() * 0.00018,
+    }))
+    fleetRef.current = cars
+
+    const toFeatureCollection = () => ({
+      type: 'FeatureCollection',
+      features: cars.map((c) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
+        properties: {},
+      })),
+    })
+
+    map.getSource('fleet')?.setData(toFeatureCollection())
+
+    const interval = setInterval(() => {
+      const fleet = fleetRef.current
+      if (!fleet) return
+      fleet.forEach((c) => {
+        c.heading += (Math.random() - 0.5) * 0.35
+        c.lat += Math.sin(c.heading) * c.speed
+        c.lng += Math.cos(c.heading) * c.speed
+      })
+      try {
+        map.getSource('fleet')?.setData(toFeatureCollection())
+      } catch {
+        /* source may be mid-removal */
+      }
+    }, 300)
+
+    return () => clearInterval(interval)
+  }, [map, mapState])
+
+  /* ---------- Resize ---------- */
+  useEffect(() => {
+    if (!map) return
+    const ro = new ResizeObserver(() => {
+      try {
+        map.resize()
+      } catch {
+        /* noop */
+      }
+    })
+    ro.observe(containerRef.current)
+    return () => ro.disconnect()
+  }, [map, mapState])
+
+  /* ---------- Fallback when MapLibre cannot start ---------- */
+  const fallbackPickup = useMemo(() => {
+    if (!pickupCoords) return null
+    return projectToGrid(pickupCoords.lat, pickupCoords.lng)
+  }, [pickupKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fallbackDropoff = useMemo(() => {
+    if (!dropoffCoords) return null
+    return projectToGrid(dropoffCoords.lat, dropoffCoords.lng)
+  }, [dropoffKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fallbackCar = useMemo(() => {
+    if (!fallbackPickup || !fallbackDropoff) return null
+    return {
+      x: fallbackPickup.x + (fallbackDropoff.x - fallbackPickup.x) * clamp01(carProgress),
+      y: fallbackPickup.y + (fallbackDropoff.y - fallbackPickup.y) * clamp01(carProgress),
+    }
+  }, [fallbackPickup, fallbackDropoff, carProgress])
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-3xl bg-[#0A0D15] select-none">
-      {/* Map layer toggle — a single unobtrusive icon button, like the layer
-          switcher on Google/Apple Maps, rather than a labeled mode pill. */}
-      <button
-        onClick={() => setMapMode(mapMode === 'cyber' ? 'real' : 'cyber')}
-        title={mapMode === 'cyber' ? 'Switch to Real Map' : 'Switch to Cyber Grid'}
-        className="absolute top-3 right-3 z-30 flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white/80 backdrop-blur-md transition-colors hover:text-white active:scale-95"
-      >
-        {mapMode === 'cyber' ? <Compass size={15} /> : <Layers size={15} />}
-      </button>
+      {/* Real vector map */}
+      <div ref={containerRef} className="absolute inset-0" />
 
-      {mapMode === 'cyber' ? (
-        <svg
-          viewBox="0 0 400 470"
-          preserveAspectRatio="xMidYMid slice"
-          className="h-full w-full cursor-crosshair select-none touch-none"
-          onClick={handleSvgClick}
-          role="img"
-          aria-label="Interactive cyber city map"
-        >
-          <defs>
-            <linearGradient id="routeGrad" x1="0" y1="1" x2="1" y2="0">
-              <stop offset="0%" stopColor="#38BDF8" />
-              <stop offset="100%" stopColor="#818CF8" />
-            </linearGradient>
-            <radialGradient id="glowCyan" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="glowViolet" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#6366F1" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#6366F1" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="vignette" cx="50%" cy="45%" r="75%">
-              <stop offset="55%" stopColor="#000000" stopOpacity="0" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
-            </radialGradient>
-          </defs>
-
-          {/* Background */}
-          <rect width="400" height="470" fill="#0A0D15" />
-          <ellipse cx="330" cy="60" rx="260" ry="200" fill="url(#glowViolet)" />
-          <ellipse cx="60" cy="400" rx="240" ry="190" fill="url(#glowCyan)" />
-
-          {/* Street Grid */}
-          <g stroke="#33456B" strokeLinecap="round">
-            <line x1="0" y1="120" x2="400" y2="120" strokeWidth="7" />
-            <line x1="0" y1="200" x2="400" y2="200" strokeWidth="9" />
-            <line x1="0" y1="280" x2="400" y2="280" strokeWidth="6" />
-            <line x1="0" y1="360" x2="400" y2="360" strokeWidth="8" />
-            <line x1="0" y1="440" x2="400" y2="440" strokeWidth="5" />
-            <line x1="80" y1="0" x2="80" y2="470" strokeWidth="7" />
-            <line x1="170" y1="0" x2="170" y2="470" strokeWidth="6" />
-            <line x1="250" y1="0" x2="250" y2="470" strokeWidth="9" />
-            <line x1="340" y1="0" x2="340" y2="470" strokeWidth="6" />
-          </g>
-
-          {/* City Blocks */}
-          <g fill="#151F32" stroke="#35486E" strokeWidth="1.5">
-            <rect x="8" y="8" width="64" height="104" rx="10" />
-            <rect x="88" y="8" width="74" height="60" rx="10" />
-            <rect x="258" y="8" width="74" height="60" rx="10" />
-            <rect x="178" y="8" width="64" height="104" rx="10" />
-            <rect x="8" y="128" width="64" height="64" rx="10" />
-            <rect x="258" y="128" width="74" height="64" rx="10" />
-            <rect x="178" y="128" width="64" height="64" rx="10" />
-            <rect x="8" y="208" width="154" height="64" rx="10" />
-            <rect x="258" y="208" width="74" height="64" rx="10" />
-            <rect x="178" y="208" width="64" height="64" rx="10" />
-            <rect x="8" y="288" width="154" height="64" rx="10" />
-            <rect x="258" y="288" width="74" height="64" rx="10" />
-            <rect x="178" y="288" width="64" height="64" rx="10" />
-            <rect x="88" y="368" width="74" height="64" rx="10" />
-            <rect x="178" y="368" width="154" height="64" rx="10" />
-          </g>
-
-          {/* Fine Grid Overlay */}
-          <g stroke="#2C3E5F" strokeWidth="0.6" opacity="0.6">
-            {Array.from({ length: 19 }).map((_, i) => (
-              <line key={`v${i}`} x1={20 + i * 20} y1="0" x2={20 + i * 20} y2="470" />
-            ))}
-            {Array.from({ length: 22 }).map((_, i) => (
-              <line key={`h${i}`} x1="0" y1={20 + i * 20} x2="400" y2={20 + i * 20} />
-            ))}
-          </g>
-
-          {/* Route path */}
-          {showRoute && (
-            <g>
-              <path
-                d={routePath}
-                fill="none"
-                stroke="#26334D"
-                strokeWidth="6"
-                strokeLinecap="round"
-                opacity="0.65"
-              />
-              <path d={routePath} ref={routeRef} fill="none" stroke="transparent" />
-              <path
-                d={routePath}
-                fill="none"
-                stroke="url(#routeGrad)"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeDasharray={len ? `${len * clamp01(carProgress)} ${len}` : '0 1000'}
-                style={{ filter: 'drop-shadow(0 0 8px rgba(56,189,248,0.85))' }}
-              />
-            </g>
-          )}
-
-          {/* Pickup Pin */}
-          <g transform={`translate(${safePickup.x},${safePickup.y})`}>
-            <circle r="30" fill="#38BDF8" opacity="0.12">
-              <animate attributeName="r" values="12;32" dur="2.4s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.3;0" dur="2.4s" repeatCount="indefinite" />
-            </circle>
-            <circle r="12" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity="0.55" />
-            <circle r="5" fill="#38BDF8" style={{ filter: 'drop-shadow(0 0 6px #38BDF8)' }} />
-          </g>
-
-          {/* Dropoff Pin */}
-          {showRoute && (
-            <g transform={`translate(${safeDropoff.x},${safeDropoff.y})`}>
-              <circle r="26" fill="#818CF8" opacity="0.15">
-                <animate attributeName="r" values="10;28" dur="2.8s" begin="0.6s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.35;0" dur="2.8s" begin="0.6s" repeatCount="indefinite" />
-              </circle>
-              <rect
-                x="-6"
-                y="-6"
-                width="12"
-                height="12"
-                rx="2.5"
-                fill="#A86BFF"
-                transform="rotate(45)"
-                style={{ filter: 'drop-shadow(0 0 6px #818CF8)' }}
-              />
-            </g>
-          )}
-
-          {/* Radar Scan */}
-          {radar && (
-            <g transform={`translate(${safePickup.x},${safePickup.y})`}>
-              {[0, 1, 2].map((i) => (
-                <circle key={i} r="6" fill="none" stroke="#38BDF8" strokeWidth="1.4">
-                  <animate attributeName="r" values="6;54" dur="2.2s" begin={`${i * 0.73}s`} repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.85;0" dur="2.2s" begin={`${i * 0.73}s`} repeatCount="indefinite" />
-                </circle>
-              ))}
-            </g>
-          )}
-
-          {/* Live Vehicle */}
-          {carPos && (
-            <g transform={`translate(${carPos.x},${carPos.y})`}>
-              <circle r="11" fill="#38BDF8" opacity="0.25" />
-              <rect
-                x="-7"
-                y="-5"
-                width="14"
-                height="10"
-                rx="3.5"
-                fill="#0A0D15"
-                stroke="#38BDF8"
-                strokeWidth="1.8"
-                style={{ filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.95))' }}
-              />
-            </g>
-          )}
-
-          <rect width="400" height="470" fill="url(#vignette)" />
-        </svg>
-      ) : (
-        /* Real Map OpenStreetMap Dark Mode Frame with Load Protection */
-        <div className="relative h-full w-full bg-[#0A0D15]">
-          {/* Status content is anchored near the top, not vertically centered —
-              the pickup/destination card floats over the lower half of the
-              map, so anything centered in the full-height container would be
-              rendered invisibly behind it. */}
-          {iframeStatus === 'loading' && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-20 bg-[#0A0D15] text-white">
-              <div className="h-7 w-7 rounded-full border-2 border-[#34D399] border-t-transparent animate-spin mb-2" />
-              <span className="text-[11px] font-medium text-white/70">Connecting OpenStreetMap...</span>
-            </div>
-          )}
-
-          {iframeStatus === 'error' ? (
-            <div className="flex h-full w-full flex-col items-center justify-start pt-16 p-6 text-center text-white">
-              <AlertTriangle className="h-8 w-8 text-[#34D399] mb-2" />
-              <p className="text-xs font-bold">Real Map Unavailable</p>
-              <p className="text-[11px] text-white/70 mt-1 max-w-[200px]">
-                Network connection restricted. Switched to offline Cyber Grid engine.
-              </p>
-              <button
-                onClick={() => setMapMode('cyber')}
-                className="mt-3 rounded-xl bg-[#34D399] px-3.5 py-1.5 text-xs font-bold text-black shadow-lg"
-              >
-                Use Cyber Grid Engine
-              </button>
-            </div>
-          ) : (
-            <iframe
-              title="Real Map View"
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              scrolling="no"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=-122.435%2C37.765%2C-122.395%2C37.795&amp;layer=mapnik"
-              className="h-full w-full invert contrast-[1.25] hue-rotate-180 brightness-[0.7]"
-              onError={() => setIframeStatus('error')}
-            />
-          )}
-
-          <div className="pointer-events-none absolute inset-0 bg-[#0A0D15]/40 backdrop-contrast-125" />
-          <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-xl border border-[#34D399]/30 bg-black/75 px-3 py-1.5 text-[11px] font-bold text-[#34D399]">
-            <LocateFixed size={14} /> Live OpenStreetMap Tracking Active
-          </div>
+      {/* Loading state */}
+      {mapState === 'loading' && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-start pt-20 bg-[#0A0D15] text-white">
+          <div className="h-7 w-7 rounded-full border-2 border-[#34D399] border-t-transparent animate-spin mb-2" />
+          <span className="text-[11px] font-medium text-white/70">Loading Denver map…</span>
         </div>
       )}
 
-      {/* Tap hint overlay */}
-      {onMapClick && mapMode === 'cyber' && (
+      {/* Fallback (no WebGL / offline) */}
+      {mapState === 'error' && (
+        <CyberGridFallback
+          showRoute={showRoute}
+          pickup={fallbackPickup}
+          dropoff={fallbackDropoff}
+          car={fallbackCar}
+          radar={radar}
+          onMapClick={onMapClick}
+        />
+      )}
+
+      {/* Focus Denver pill — shown after a Colorado-wide reveal when GPS is unavailable */}
+      {showFocusDenver && mapState === 'ready' && (
+        <button
+          onClick={focusDenver}
+          className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#38BDF8]/50 bg-black/70 px-4 py-2 text-[12px] font-extrabold text-[#38BDF8] shadow-xl backdrop-blur-md transition-transform active:scale-95"
+        >
+          <LocateFixed size={14} /> Focus Denver
+        </button>
+      )}
+
+      {/* Live badge */}
+      {mapState === 'ready' && (
+        <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-xl border border-[#34D399]/30 bg-black/75 px-3 py-1.5 text-[11px] font-bold text-[#34D399]">
+          <LocateFixed size={14} /> Live Denver Map • Human Fleet Active
+        </div>
+      )}
+
+      {/* Tap hint */}
+      {onMapClick && mapState === 'ready' && (
         <div className="pointer-events-none absolute bottom-3 right-3 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[9.5px] font-medium text-white/50 backdrop-blur-md">
-          <Eye size={10} className="text-[#38BDF8]" /> Tap map to place pins
+          <Eye size={10} className="text-[#38BDF8]" /> Tap map to pin pickup
         </div>
       )}
     </div>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/*  Denver lat/lng → fallback grid projection                          */
+/* ------------------------------------------------------------------ */
+
+function projectToGrid(lat, lng) {
+  const LON_MIN = -105.35
+  const LON_MAX = -104.55
+  const LAT_MIN = 39.55
+  const LAT_MAX = 39.85
+  const x = 20 + ((lng - LON_MIN) / (LON_MAX - LON_MIN)) * 360
+  const y = 20 + ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * 430
+  return { x: Math.round(x), y: Math.round(y) }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Offline/WebGL fallback — simplified Denver grid                    */
+/* ------------------------------------------------------------------ */
+
+function CyberGridFallback({ showRoute, pickup, dropoff, car, radar, onMapClick }) {
+  const routePath = useMemo(() => {
+    if (!pickup || !dropoff) return ''
+    const x1 = pickup.x, y1 = pickup.y, x2 = dropoff.x, y2 = dropoff.y
+    const cx1 = x1 + (x2 - x1) * 0.35
+    const cy1 = y1 - 40
+    const cx2 = x1 + (x2 - x1) * 0.65
+    const cy2 = y2 + 40
+    return `M ${x1} ${y1} C ${cx1} ${cy1} ${cx2} ${cy2} ${x2} ${y2}`
+  }, [pickup, dropoff])
+
+  const handleClick = (e) => {
+    if (!onMapClick) return
+    const svg = e.currentTarget
+    const rect = svg.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const { lat, lng } = projectToGridInverse(
+      Math.round(((e.clientX - rect.left) / rect.width) * 400),
+      Math.round(((e.clientY - rect.top) / rect.height) * 470)
+    )
+    onMapClick({ lat, lng })
+  }
+
+  return (
+    <svg
+      viewBox="0 0 400 470"
+      preserveAspectRatio="xMidYMid slice"
+      className="h-full w-full cursor-crosshair select-none touch-none"
+      onClick={handleClick}
+      role="img"
+      aria-label="Simplified Denver map (offline mode)"
+    >
+      <defs>
+        <linearGradient id="fgRoute" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#38BDF8" />
+          <stop offset="100%" stopColor="#818CF8" />
+        </linearGradient>
+        <radialGradient id="fgVignette" cx="50%" cy="45%" r="75%">
+          <stop offset="55%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
+        </radialGradient>
+      </defs>
+
+      <rect width="400" height="470" fill="#0A0D15" />
+      <g stroke="#33456B" strokeLinecap="round">
+        <line x1="0" y1="120" x2="400" y2="120" strokeWidth="7" />
+        <line x1="0" y1="200" x2="400" y2="200" strokeWidth="9" />
+        <line x1="0" y1="280" x2="400" y2="280" strokeWidth="6" />
+        <line x1="0" y1="360" x2="400" y2="360" strokeWidth="8" />
+        <line x1="80" y1="0" x2="80" y2="470" strokeWidth="7" />
+        <line x1="170" y1="0" x2="170" y2="470" strokeWidth="6" />
+        <line x1="250" y1="0" x2="250" y2="470" strokeWidth="9" />
+        <line x1="340" y1="0" x2="340" y2="470" strokeWidth="6" />
+      </g>
+      <g stroke="#2C3E5F" strokeWidth="0.6" opacity="0.6">
+        {Array.from({ length: 19 }).map((_, i) => (
+          <line key={`v${i}`} x1={20 + i * 20} y1="0" x2={20 + i * 20} y2="470" />
+        ))}
+        {Array.from({ length: 22 }).map((_, i) => (
+          <line key={`h${i}`} x1="0" y1={20 + i * 20} x2="400" y2={20 + i * 20} />
+        ))}
+      </g>
+
+      {showRoute && pickup && dropoff && (
+        <g>
+          <path d={routePath} fill="none" stroke="#26334D" strokeWidth="6" strokeLinecap="round" opacity="0.65" />
+          <path d={routePath} fill="none" stroke="url(#fgRoute)" strokeWidth="3.5" strokeLinecap="round" />
+        </g>
+      )}
+
+      {pickup && (
+        <g transform={`translate(${pickup.x},${pickup.y})`}>
+          <circle r="12" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity="0.55" />
+          <circle r="5" fill="#38BDF8" style={{ filter: 'drop-shadow(0 0 6px #38BDF8)' }} />
+        </g>
+      )}
+
+      {showRoute && dropoff && (
+        <g transform={`translate(${dropoff.x},${dropoff.y})`}>
+          <rect x="-6" y="-6" width="12" height="12" rx="2.5" fill="#A86BFF" transform="rotate(45)" style={{ filter: 'drop-shadow(0 0 6px #818CF8)' }} />
+        </g>
+      )}
+
+      {radar && pickup && (
+        <g transform={`translate(${pickup.x},${pickup.y})`}>
+          {[0, 1, 2].map((i) => (
+            <circle key={i} r="6" fill="none" stroke="#38BDF8" strokeWidth="1.4">
+              <animate attributeName="r" values="6;54" dur="2.2s" begin={`${i * 0.73}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.85;0" dur="2.2s" begin={`${i * 0.73}s`} repeatCount="indefinite" />
+            </circle>
+          ))}
+        </g>
+      )}
+
+      {car && (
+        <g transform={`translate(${car.x},${car.y})`}>
+          <circle r="11" fill="#38BDF8" opacity="0.25" />
+          <rect x="-7" y="-5" width="14" height="10" rx="3.5" fill="#0A0D15" stroke="#38BDF8" strokeWidth="1.8" style={{ filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.95))' }} />
+        </g>
+      )}
+
+      <rect width="400" height="470" fill="url(#fgVignette)" />
+
+      <text x="200" y="455" textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="9" fontWeight="600" letterSpacing="2">
+        OFFLINE MAP MODE
+      </text>
+    </svg>
+  )
+}
+
+function projectToGridInverse(x, y) {
+  const LON_MIN = -105.35
+  const LON_MAX = -104.55
+  const LAT_MIN = 39.55
+  const LAT_MAX = 39.85
+  const lng = LON_MIN + ((x - 20) / 360) * (LON_MAX - LON_MIN)
+  const lat = LAT_MIN + ((y - 20) / 430) * (LAT_MAX - LAT_MIN)
+  return { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) }
+}
+
+/* ------------------------------------------------------------------ */
 
 export default function MapEngine(props) {
   return (
@@ -397,4 +671,3 @@ export default function MapEngine(props) {
     </MapErrorBoundary>
   )
 }
-

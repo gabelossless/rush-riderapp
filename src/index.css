@@ -94,4 +94,124 @@
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  MapLibre DOM marker styles                                         */
+/* ------------------------------------------------------------------ */
+
+.rush-marker {
+  pointer-events: none;
+}
+.rush-marker-dot {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.9);
+}
+.rush-marker-ring {
+  position: absolute;
+  left: -12px;
+  top: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(56, 189, 248, 0.5);
+  animation: rush-pulse 2.4s ease-out infinite;
+}
+.rush-marker-square {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #a86bff;
+  transform: rotate(45deg);
+  box-shadow: 0 0 10px rgba(129, 140, 248, 0.9);
+}
+.rush-car-dot {
+  position: absolute;
+  left: -8px;
+  top: -6px;
+  width: 16px;
+  height: 12px;
+  border-radius: 4px;
+  background: #0a0d15;
+  border: 2px solid #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.95);
+}
+.rush-user-dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #34d399;
+  border: 2px solid rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.8);
+}
+.rush-radar-ring {
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(56, 189, 248, 0.7);
+  animation: rush-radar 2.2s ease-out infinite;
+}
+.rush-surge-ring {
+  position: absolute;
+  left: -18px;
+  top: -18px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: rgba(251, 191, 36, 0.14);
+  border: 1.5px solid rgba(251, 191, 36, 0.55);
+  animation: rush-pulse 2.4s ease-out infinite;
+}
+.rush-surge-core {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.9);
+}
+.rush-radar-ring,
+.rush-surge-ring,
+.rush-surge-core,
+.rush-car-dot,
+.rush-user-dot {
+  pointer-events: none;
+}
+
+@keyframes rush-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+@keyframes rush-radar {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
 
