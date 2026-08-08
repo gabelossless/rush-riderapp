@@ -1,7 +1,7 @@
 # 🤝 Agent Handoff & Project Status Report
 
 **Repository**: [github.com/gabelossless/rush-riderapp](https://github.com/gabelossless/rush-riderapp)
-**Status**: 🟢 `main` at `3f8c392`, working tree clean, build/lint/tests all pass, pushed live. 36/36 tests across 5 files.
+**Status**: 🟢 `main` at `3f8c392`, working tree clean, build/lint/tests all pass, pushed live. 40/40 tests across 5 files.
 
 ---
 
@@ -69,13 +69,20 @@ See `git log` for the full commit-by-commit history.
    ([src/components/HeroMoment.jsx](src/components/HeroMoment.jsx)) plays on
    entry into the app shell: a car drives up, a transparent fare card
    ($24.90, "No surge", 88%/12% split) fades in, and it auto-dismisses after
-   ~5s or on tap (`onDone` → `setShowHero(false)` in `AppShell`,
-   [src/App.jsx](src/App.jsx)). Mounted once per app-shell render via local
-   `useState`, so it plays on each login session. Includes 4 tests
+   ~5s or on tap. Includes 4 tests
    ([HeroMoment.test.jsx](src/components/HeroMoment.test.jsx)).
 6. **Merged `origin/main`** (`7d41546` map fixes + `3ad3619` HANDOFF rewrite)
    into the HeroMoment work via a clean ORT merge — no conflicts. Branch
    synced and pushed; `main` now at `3f8c392`.
+7. **Docs audit & sync** (`925d9c0`) — refreshed `HANDOFF.md`, `README.md`,
+   `DEMO_GUIDE.md` with the current build state (40 tests / 5 files), documented the HeroMoment flow, and added the test command to
+   README. Also deleted two fully-merged stale remote branches
+   (`claude/review-updates-tmxcdv`, `claude/rideshare-demo-black-screen-y1bzmw`).
+8. **Backlog knockouts** (this commit) — fixed `switchRole()` data loss
+   ([AuthContext.jsx](src/context/AuthContext.jsx)) so custom sign-up identity
+   survives role switches, made `HeroMoment` play once per session
+   (`sessionStorage` flag keyed by user id, [App.jsx](src/App.jsx)), and added
+   4 new `switchRole` tests.
 
 ---
 
@@ -103,8 +110,9 @@ email is recognized:
 Full-viewport layout (`h-[100dvh] w-full`, no phone-frame chrome). Header,
 the passenger/driver content, and the bottom tab bar (hidden during an
 active ride) all sit here. On mount it renders `HeroMoment` (the ~5s brand
-beat with the fare card — see "This Session's Work" #5) unless already
-dismissed. `RoleSwitch` in the header flips between:
+beat with the fare card) once per session — a `sessionStorage` flag keyed
+by user id (`rush_hero_seen_<id>`) suppresses replays on refresh until the
+tab/browser closes. `RoleSwitch` in the header flips between:
 - **`PassengerViewContent`**: `home ('Where to?') → dest (search/saved
   places/recents) → confirm (RideConfirmSheet) → searching → matched →
   completed`. Tracks real `pickupCoords`/`dropoffCoords` locally (default
@@ -129,10 +137,11 @@ now stores `pickupCoords`/`dropoffCoords` alongside the existing
 - `AccountModal` is purely the signed-in profile panel — balance, rating,
   rides, role switch, logout. It does not handle sign-up; that's fully
   `SignUpFlow`'s job.
-- **Known rough edge (pre-existing, not yet fixed)**: `switchRole()` fully
-  replaces the signed-in user with a hardcoded preset record, so a custom
-  name/vehicle registered through `SignUpFlow` is discarded on role
-  switch. Low-priority — flag if it comes up.
+- **`switchRole()` preserves identity** (fixed this session): it edits the
+  current user in place — keeping name/email/avatar/joinedDate/wallet —
+  only filling in role-specific fields (car/plate/earnings counts for
+  driver, stripping driver-only fields back to passenger). Custom sign-up
+  data survives; preset records are no longer clobbering the session.
 
 ### 6. Map engine ([MapEngine.jsx](src/components/MapEngine.jsx))
 Real vector map: **MapLibre GL + OpenFreeMap** dark style (`fiord`), GPS
@@ -172,7 +181,8 @@ adding fake unit tests around it.
 - `src/context/TripContext.test.jsx` — `requestRide`/`cancelRequest`/
   `resetTripState`/`completeRide`, including the `pickupCoords`/
   `dropoffCoords` coverage added for the map fixes.
-- `src/context/AuthContext.test.jsx`
+- `src/context/AuthContext.test.jsx` — logout/login/register/loginWithEmail/
+  `switchRole` (identity preservation covered).
 - `src/components/PWAInstallPrompt.test.jsx`
 - `src/components/HeroMoment.test.jsx`
 - `src/utils/useTimeout.test.js`
@@ -188,7 +198,7 @@ spans and call methods through the ref.
 - Dev server: `npm run dev`
 - Build: `npm run build`
 - Preview production build: `npm run preview`
-- Test: `npm test -- --run` (36 tests, 5 files, all passing as of this
+- Test: `npm test -- --run` (40 tests, 5 files, all passing as of this
   session)
 - Lint: `npm run lint` (0 errors, 2 pre-existing warnings — both
   `react(only-export-components)` in `AuthContext.jsx` / `TripContext.jsx`,
@@ -200,12 +210,14 @@ engine, PWA install), see [DEMO_GUIDE.md](DEMO_GUIDE.md).
 ---
 
 ## 🔭 Suggested Next Steps
-1. **Manual live-network verification** of fixes #2/#3 above (route
-   gradient rendering, car marker snapping to a newly selected route) —
-   this sandbox couldn't reach the tile/OSRM hosts to confirm visually.
-2. **`switchRole()` data loss** (Auth context, rough edge above) — decide
-   whether custom sign-up data should survive a role switch, or whether
-   the demo-preset behavior is intentional and just needs a UI note.
-3. **Tile host reliability** — if the new loading watchdog (fix #4) fires
-   often in the wild, consider a paid/self-hosted tile provider instead of
-   OpenFreeMap's free tier.
+1. **Manual live-network verification** of the map fixes (route gradient
+   rendering, car marker snapping to a newly selected route) — this sandbox
+   couldn't reach the tile/OSRM hosts to confirm visually. Build + deploy to
+   Vercel, then run the passenger flow: request a ride and confirm the route
+   line renders a blue→indigo gradient, then change the destination mid-flow
+   and confirm the car snaps to the new route.
+2. ~~**`switchRole()` data loss`**~~ — **DONE** (custom identity now
+   preserved on role switch; new AuthContext tests added). Nothing left.
+3. **Tile host reliability** — if the loading watchdog (fix #4) fires often
+   in the wild, consider a paid/self-hosted tile provider instead of
+   OpenFreeMap's free tier. Deferred: observe production metrics first.

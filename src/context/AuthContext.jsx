@@ -121,10 +121,34 @@ export function AuthProvider({ children }) {
 
   const switchRole = (newRole) => {
     if (!user) return
-    if (newRole === 'passenger' && user.role !== 'passenger') {
-      setUser({ ...PRESET_ACCOUNTS.rider, walletBalance: user.walletBalance || 150 })
-    } else if (newRole === 'driver' && user.role !== 'driver') {
-      setUser({ ...PRESET_ACCOUNTS.driver, walletBalance: user.walletBalance || 488.2 })
+    if (newRole === user.role) return
+    if (newRole === 'passenger') {
+      setUser((prev) => {
+        const {
+          car: _car,
+          plate: _plate,
+          todayEarnings: _todayEarnings,
+          todayRides: _todayRides,
+          acceptanceRate: _acceptanceRate,
+          pledgeAccepted: _pledgeAccepted,
+          humanVerified: _humanVerified,
+          ...rest
+        } = prev
+        return { ...rest, role: 'passenger', walletBalance: prev.walletBalance || 150 }
+      })
+    } else if (newRole === 'driver') {
+      setUser((prev) => ({
+        ...prev,
+        role: 'driver',
+        walletBalance: prev.walletBalance || 488.2,
+        car: prev.car || 'Tesla Model 3 — Midnight Silver',
+        plate: prev.plate || 'RUSH-NEW',
+        todayEarnings: prev.todayEarnings || 0,
+        todayRides: prev.todayRides || 0,
+        acceptanceRate: prev.acceptanceRate || '100%',
+        pledgeAccepted: !!prev.pledgeAccepted,
+        humanVerified: prev.humanVerified ?? true,
+      }))
     }
   }
 

@@ -10,6 +10,7 @@ function TestConsumer({ apiRef }) {
       <span data-testid="auth-status">{auth.isAuthenticated ? 'authed' : 'not-authed'}</span>
       <span data-testid="user-name">{auth.user?.name || 'none'}</span>
       <span data-testid="user-email">{auth.user?.email || 'none'}</span>
+      <span data-testid="user-role">{auth.user?.role || 'none'}</span>
     </div>
   )
 }
@@ -99,6 +100,54 @@ describe('AuthContext', () => {
       expect(api.current.user.plate).toBe('TEST')
       expect(api.current.user.todayEarnings).toBe(0)
       expect(api.current.user.todayRides).toBe(0)
+    })
+  })
+
+  describe('switchRole', () => {
+    it('preserves custom identity when passenger switches to driver', () => {
+      const api = renderAuth()
+      act(() => api.current.register({ name: 'Taylor', email: 't@t.com', role: 'passenger' }))
+      expect(screen.getByTestId('user-role')).toHaveTextContent('passenger')
+
+      act(() => api.current.switchRole('driver'))
+      expect(api.current.user.role).toBe('driver')
+      expect(api.current.user.name).toBe('Taylor')
+      expect(api.current.user.email).toBe('t@t.com')
+      expect(api.current.user.car).toBeDefined()
+      expect(api.current.user.plate).toBeDefined()
+      expect(api.current.user.walletBalance).toBe(100)
+    })
+
+    it('preserves custom identity when driver switches back to passenger', () => {
+      const api = renderAuth()
+      act(() => api.current.register({ name: 'Pat', email: 'p@t.com', role: 'driver', vehicle: 'Honda', plate: 'P-TEST' }))
+      act(() => api.current.switchRole('passenger'))
+
+      expect(api.current.user.role).toBe('passenger')
+      expect(api.current.user.name).toBe('Pat')
+      expect(api.current.user.email).toBe('p@t.com')
+      expect(api.current.user.car).toBeUndefined()
+    })
+
+    it('preserves accumulated driver earnings across role switch', () => {
+      const api = renderAuth()
+      act(() => api.current.register({ name: 'Sam', email: 's@t.com', role: 'driver' }))
+      act(() => api.current.creditDriverEarnings(80))
+      act(() => api.current.switchRole('passenger'))
+      act(() => api.current.switchRole('driver'))
+
+      expect(api.current.user.role).toBe('driver')
+      expect(api.current.user.walletBalance).toBeGreaterThanOrEqual(80)
+      expect(api.current.user.name).toBe('Sam')
+    })
+
+    it('is a no-op when switching to the current role', () => {
+      const api = renderAuth()
+      act(() => api.current.register({ name: 'Alex', email: 'a@t.com', role: 'passenger' }))
+      act(() => api.current.switchRole('passenger'))
+      expect(api.current.user.role).toBe('passenger')
+      expect(api.current.user.name).toBe('Alex')
+      expect(api.current.user.car).toBeUndefined()
     })
   })
 

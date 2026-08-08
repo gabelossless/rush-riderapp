@@ -923,7 +923,14 @@ function AppShell({
 }) {
   const { user } = useAuth()
   const [immersive, setImmersive] = useState(false)
-  const [showHero, setShowHero] = useState(true)
+  const heroKey = `rush_hero_seen_${user?.id || 'anonymous'}`
+  const [showHero, setShowHero] = useState(() => {
+    try {
+      return !sessionStorage.getItem(heroKey)
+    } catch {
+      return true
+    }
+  })
 
   useEffect(() => {
     if (user?.role) setView(user.role)
@@ -963,7 +970,18 @@ function AppShell({
       <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <PWAInstallPrompt />
-      {showHero && <HeroMoment onDone={() => setShowHero(false)} />}
+      {showHero && (
+        <HeroMoment
+          onDone={() => {
+            try {
+              sessionStorage.setItem(heroKey, '1')
+            } catch {
+              /* noop */
+            }
+            setShowHero(false)
+          }}
+        />
+      )}
     </div>
   )
 }
