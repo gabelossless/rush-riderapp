@@ -109,7 +109,7 @@ function MapEngineContent({
   const mapRef = useRef(null)
   const [mapState, setMapState] = useState('loading') // loading | ready | error
   const [showFocusDenver, setShowFocusDenver] = useState(false)
-  const [routeReady, setRouteReady] = useState(false)
+  const [routeVersion, setRouteVersion] = useState(0)
 
   const routeGeoRef = useRef(null)
   const routeCumRef = useRef(null)
@@ -155,7 +155,11 @@ function MapEngineContent({
 
     map.on('load', () => {
       // Route layers (hidden until data arrives)
-      map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: null, properties: {} } })
+      map.addSource('route', {
+        type: 'geojson',
+        lineMetrics: true,
+        data: { type: 'Feature', geometry: null, properties: {} },
+      })
       map.addLayer({
         id: 'route-glow',
         type: 'line',
@@ -173,7 +177,7 @@ function MapEngineContent({
         source: 'route',
         paint: {
           'line-width': 4,
-          'line-color': [
+          'line-gradient': [
             'interpolate',
             ['linear'],
             ['line-progress'],
@@ -320,7 +324,7 @@ function MapEngineContent({
       }
       routeGeoRef.current = null
       routeCumRef.current = null
-      setRouteReady(false)
+      setRouteVersion((v) => v + 1)
       return
     }
 
@@ -343,7 +347,7 @@ function MapEngineContent({
         const bounds = new LngLatBounds()
         geometry.coordinates.forEach((c) => bounds.extend(c))
         map.fitBounds(bounds, { padding: 70, duration: 900, maxZoom: 13.5 })
-        setRouteReady(true)
+        setRouteVersion((v) => v + 1)
       })
       .catch((err) => {
         if (err?.name === 'AbortError') return
@@ -379,7 +383,7 @@ function MapEngineContent({
       carMarkerRef.current?.setLngLat(pt)
       if (carEl) carEl.style.display = 'block'
     }
-  }, [map, mapState, carProgress, routeReady, showRoute]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, mapState, carProgress, routeVersion, showRoute]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---------- Radar pulse while searching ---------- */
   useEffect(() => {

@@ -65,12 +65,14 @@ export function TripProvider({ children }) {
     }
   }, [tripHistory])
 
-  const requestRide = ({ pickup, destination, tier, fare, eta, distance, riderName }) => {
+  const requestRide = ({ pickup, destination, tier, fare, eta, distance, riderName, pickupCoords, dropoffCoords }) => {
     const newRequest = {
       id: `req_${Date.now()}`,
       status: 'SEARCHING', // SEARCHING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
       pickup: pickup || 'Current Location',
       destination: destination || 'Union Station',
+      pickupCoords: pickupCoords || null,
+      dropoffCoords: dropoffCoords || null,
       tier: tier || 'Rush Express',
       fare: fare || 24.90,
       driverFare: (fare || 24.90) * 0.88,
