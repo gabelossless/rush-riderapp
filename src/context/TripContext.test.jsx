@@ -70,6 +70,40 @@ describe('TripContext', () => {
       expect(stored).not.toBeNull()
       expect(stored.status).toBe('SEARCHING')
     })
+
+    it('stores pickupCoords/dropoffCoords on the trip when provided', () => {
+      const api = renderTrip()
+      const pickupCoords = { lat: 39.7526, lng: -105.0047 }
+      const dropoffCoords = { lat: 39.7539, lng: -105.0002 }
+      act(() => {
+        api.current.requestRide({
+          pickup: 'Home',
+          destination: 'Union Station',
+          tier: 'standard',
+          fare: 10,
+          eta: '5 min',
+          distance: '1 mi',
+          riderName: 'Test',
+          pickupCoords,
+          dropoffCoords,
+        })
+      })
+      expect(api.current.currentTrip.pickupCoords).toEqual(pickupCoords)
+      expect(api.current.currentTrip.dropoffCoords).toEqual(dropoffCoords)
+
+      const stored = JSON.parse(localStorage.getItem('rush_current_trip_state'))
+      expect(stored.pickupCoords).toEqual(pickupCoords)
+      expect(stored.dropoffCoords).toEqual(dropoffCoords)
+    })
+
+    it('leaves pickupCoords/dropoffCoords null when not provided (legacy trips)', () => {
+      const api = renderTrip()
+      act(() => {
+        api.current.requestRide({ pickup: 'P', destination: 'D', tier: 's', fare: 10, eta: '5m', distance: '1m', riderName: 'T' })
+      })
+      expect(api.current.currentTrip.pickupCoords).toBeNull()
+      expect(api.current.currentTrip.dropoffCoords).toBeNull()
+    })
   })
 
   describe('cancelRequest', () => {

@@ -292,6 +292,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
       eta: currentTierObj.etaRange,
       distance: destination ? destination.distance : '2.1 mi',
       riderName: user ? user.name : 'Alex Rivera',
+      pickupCoords,
+      dropoffCoords,
     })
     setStage('searching')
   }
@@ -775,7 +777,13 @@ function DriverViewContent({ onImmersiveChange }) {
   return (
     <div className="relative h-full overflow-y-auto no-scrollbar">
       <div className="absolute inset-0">
-        <MapShell showRoute={Boolean(currentTrip)} radar={online && !currentTrip} />
+        <MapShell
+          showRoute={Boolean(currentTrip)}
+          radar={online && !currentTrip}
+          pickupCoords={currentTrip?.pickupCoords || SAVED_PLACES[0].latlng}
+          dropoffCoords={currentTrip?.dropoffCoords || PRESET_DESTINATIONS[0].latlng}
+          carProgress={currentTrip?.progress || 0}
+        />
       </div>
 
       <div className="relative z-10 mx-auto min-h-full w-full max-w-lg p-3">

@@ -1,7 +1,7 @@
 # 🤝 Agent Handoff & Project Status Report
 
 **Repository**: [github.com/gabelossless/rush-riderapp](https://github.com/gabelossless/rush-riderapp)
-**Status**: 🟢 Clean working directory on `main`, build and lint both pass, live deployment verified error-free.
+**Status**: 🟢 `main` and `claude/review-updates-tmxcdv` are both at `7d41546`, working tree clean, build/lint/tests all pass, fixes pushed live.
 
 ---
 
@@ -12,53 +12,56 @@
 
 ## 📦 This Session's Work (chronological)
 
-1. **Black screen bug** — the Cyber Grid map's SVG colors were only a few RGB
-   units from the app background, so the map (the dominant visual element)
-   rendered as solid black. Brightened the palette. Also replaced the
-   unreliable iframe `onLoad`-based Real Map failure detection with a
-   `fetch()` network preflight (a blocked/reset connection still fires
-   `onLoad` for the browser's own error page), and fixed the dev/preview
-   server rejecting requests from a non-`localhost` `Host` header, which
-   breaks remote/cloud preview environments.
-2. **Project cleanup** — regenerated the PWA icons (all five were
-   byte-identical JPEGs mislabeled `.png`, ignoring their declared sizes);
-   removed dead assets (`vite.svg`, `hero.png`, an unrelated social-icon
-   sprite sheet); wired up the unused `favicon.svg`.
-3. **UX pass toward Uber/Lyft conventions** — decluttered the header (was:
-   logo + pulsing badge + wallet pill + a half-width Passenger/Driver
-   segmented pill + duplicate nav icons), simplified the map-mode picker
-   to a single icon button, moved ride preferences into progressive
-   disclosure, and hid the bottom tab bar during an active
-   search/trip/completion (map + sheet only, like a real trip-tracking
-   screen).
-4. **Toned down the neon/cyberpunk look** — pure neon cyan (`#00F0FF`) and
-   violet (`#7000FF`) softened to sky blue (`#38BDF8`) and indigo
-   (`#6366F1`); removed ~40 colored glow shadows and rainbow gradients
-   stacked on nearly every button/badge/card, replacing them with solid
-   fills and neutral elevation shadows.
-5. **Dropped the fake phone-frame mockup** — the app was boxed into a
-   fixed 410×820 bezel centered in the browser with a marketing sidebar
-   beside it. Now a real full-viewport web app: the map goes edge-to-edge
-   on any screen size, and the interactive panels (header, ride-request
-   sheet, tab bar) cap themselves to a comfortable width and center over
-   it, the same pattern Uber's own web app uses.
-6. **Two large feature commits landed directly on `main`** (not from this
-   session): a rewritten email-first sign-up/landing flow
-   (`SignUpFlow.jsx`) and a single-screen ride-confirm sheet
-   (`RideConfirmSheet.jsx`) replacing the old multi-screen tier-compare
-   flow. **This introduced a critical bug**: `StepLanding` in
-   `SignUpFlow.jsx` referenced `emailRef`, a variable that only existed in
-   the *parent* component's scope and was never passed down — since the
-   landing step renders first for anyone not logged in, this threw a
-   `ReferenceError` on first paint for **every signed-out visitor**. Fixed
-   by removing the stray `ref` (the input already had `autoFocus`, which
-   is all it needed). Also fixed while in there: deduped a fare-calculation
-   formula that existed independently in both `App.jsx` and
-   `RideConfirmSheet.jsx` (agreed only by coincidence of copy-paste — now
-   `basePrice` is computed once and passed down), renamed
-   `AuthModal.jsx` → `AccountModal.jsx` to match what the component was
-   already renamed to internally, and brought `README.md`/`DEMO_GUIDE.md`
-   back in sync with the actual current flow.
+Session started with a code review of the prior session's three commits
+(`689e185` Real Denver map rewrite, `b2b51a3` PWA/UI polish, `0b5dfa9` test
+suite), then fixed everything the review + live testing turned up.
+
+1. **Driver's map showed nothing** — `DriverViewContent`'s `<MapShell>`
+   (`src/App.jsx`) passed only `showRoute`/`radar`, never `pickupCoords`/
+   `dropoffCoords`/`carProgress`. `MapEngine` defaults those to `null`/`0`,
+   so every coord-gated effect (route fetch, radar pulse, car position)
+   bailed out immediately — a driver going online or accepting a ride saw a
+   bare map. Fixed by threading real coordinates through `TripContext`:
+   `requestRide()` now accepts and stores `pickupCoords`/`dropoffCoords` on
+   `currentTrip`, `PassengerViewContent` passes its local coords in when
+   requesting a ride, and `DriverViewContent` reads them back off
+   `currentTrip` (falling back to the app's existing default "Home → Union
+   Station" landmarks — `SAVED_PLACES[0]`/`PRESET_DESTINATIONS[0]` — for
+   legacy/no-trip-yet cases).
+2. **Route gradient silently invalid** — the `route-line` MapLibre layer
+   put a `['line-progress']` interpolation on `line-color`, but per the
+   style spec that expression is only valid on `line-gradient`, which also
+   requires the source to opt into `lineMetrics: true`. Fixed both.
+3. **Car marker went stale after a mid-flow destination change** — the
+   car-animation effect keyed off a boolean `routeReady`; re-fetching a new
+   route while it was already `true` was a same-value no-op, so the effect
+   didn't re-run even though the route refs had changed. Swapped for a
+   monotonically incrementing `routeVersion` counter so every new route
+   triggers a re-render.
+4. **Map could hang forever on "Loading Denver map…"** (caught live from a
+   real deployed session, screenshot showed the spinner with no way out).
+   `mapState` only ever left `'loading'` via MapLibre's `load`/`error`
+   events — on some networks (blocked/rate-limited `tiles.openfreemap.org`,
+   flaky cellular, content blockers) the style fetch just hangs without
+   firing either, even though a fully working offline fallback map
+   (`CyberGridFallback`) was one state away. Added an 8s watchdog timeout
+   that forces the fallback if still `'loading'` when it fires. Reproduced
+   the exact hang locally (this sandbox's network policy blocks the tile
+   host) and confirmed the watchdog recovers correctly.
+
+Added 2 `TripContext.test.jsx` cases covering the new `pickupCoords`/
+`dropoffCoords` params (32/32 tests passing, up from 30).
+
+**Verification caveat for the next agent**: this sandbox's network policy
+blocks `tiles.openfreemap.org` and `router.project-osrm.org`, so fixes #2
+and #3 above were verified by reading the MapLibre style spec and the
+effect's dependency logic, not by watching the real gradient/route render
+live. Fix #1 and #4 *were* verified live (via the offline-fallback
+renderer, which shares the same code paths/props). **Worth a manual check
+on a real device with normal network access**: confirm the route line
+actually shows a visible blue→indigo gradient, and that changing
+destination mid-flow (after a route has already loaded once) snaps the car
+marker to the new route instead of leaving it on the old one.
 
 See `git log` for the full commit-by-commit history.
 
@@ -90,37 +93,78 @@ the passenger/driver content, and the bottom tab bar (hidden during an
 active ride) all sit here. `RoleSwitch` in the header flips between:
 - **`PassengerViewContent`**: `home ('Where to?') → dest (search/saved
   places/recents) → confirm (RideConfirmSheet) → searching → matched →
-  completed`.
+  completed`. Tracks real `pickupCoords`/`dropoffCoords` locally (default
+  "Home" → "Union Station"), now threaded into `currentTrip` on request.
 - **`DriverViewContent`**: online/offline toggle, 88% earnings dashboard,
   incoming-request card with honest distance/ETA copy, 2-stage trip
-  acceptance (`ACCEPTED` → `IN_PROGRESS` → `COMPLETED`).
+  acceptance (`ACCEPTED` → `IN_PROGRESS` → `COMPLETED`). Reads its map
+  coords/progress off `currentTrip` (see fix #1 above).
 
-### 4. Auth context ([AuthContext.jsx](src/context/AuthContext.jsx) &
+### 4. Trip context ([TripContext.jsx](src/context/TripContext.jsx))
+`currentTrip` is the single shared source of truth for the in-progress
+ride, synced to `localStorage` (cross-tab via the `storage` event) so
+passenger/driver views (and separate tabs) stay consistent. `requestRide()`
+now stores `pickupCoords`/`dropoffCoords` alongside the existing
+`pickup`/`destination` address strings — added this session, see fix #1.
+
+### 5. Auth context ([AuthContext.jsx](src/context/AuthContext.jsx) &
 [AccountModal.jsx](src/components/AccountModal.jsx))
 - `findKnownUser(email)` / `loginWithEmail(email)` / `demoLogin(role)` /
   `register(...)` back the sign-up flow above; known emails persist to
   `localStorage` (`rush_known_emails`).
-- `AccountModal` (post-rename) is purely the signed-in profile panel now —
-  balance, rating, rides, role switch, logout. It no longer handles
-  sign-up; that's fully `SignUpFlow`'s job.
+- `AccountModal` is purely the signed-in profile panel — balance, rating,
+  rides, role switch, logout. It does not handle sign-up; that's fully
+  `SignUpFlow`'s job.
 - **Known rough edge (pre-existing, not yet fixed)**: `switchRole()` fully
   replaces the signed-in user with a hardcoded preset record, so a custom
   name/vehicle registered through `SignUpFlow` is discarded on role
   switch. Low-priority — flag if it comes up.
 
-### 5. Resilient map engine ([MapEngine.jsx](src/components/MapEngine.jsx))
-SVG Bezier path length fallbacks, Euclidean distance calculations
-(`Math.hypot`), defensive coordinate checks, a `fetch()` network preflight
-before mounting the OpenStreetMap iframe (so a blocked network shows a
-clear fallback instead of a blank pane), and a React `MapErrorBoundary`.
-Cyber Grid is the default; Real Map is opt-in via a small icon toggle.
+### 6. Map engine ([MapEngine.jsx](src/components/MapEngine.jsx))
+Real vector map: **MapLibre GL + OpenFreeMap** dark style (`fiord`), GPS
+boot with a Colorado-wide reveal + "Focus Denver" pill if GPS is denied,
+40+ simulated live fleet cars, 6 pulsing surge zones, and real driving
+routes via the public **OSRM** engine (car animates along actual roads).
+Tap-to-pin sets a custom pickup. Degrades gracefully:
+- **`mapState`**: `'loading' → 'ready'` on MapLibre's `load` event, or
+  `'error'` on a fatal `error` event *or* the 8s loading watchdog (added
+  this session, fix #4) if neither fires.
+- **`'error'`** renders `CyberGridFallback`, a self-contained SVG grid map
+  (own route/pickup/dropoff/radar/car rendering, tap-to-pin support) — a
+  fully functional offline mode, not just an error screen.
+- A React `MapErrorBoundary` wraps the whole thing for WebGL/render
+  crashes, with a manual "Reload View" recovery button.
+- **Known open question (not yet acted on, flagged to the user)**: the
+  free OpenFreeMap tile host has no SLA; if the loading-watchdog fallback
+  fires often in practice, consider a more reliable tile host.
 
-### 6. PWA & mobile UX ([PWAInstallPrompt.jsx](src/components/PWAInstallPrompt.jsx) & [haptics.js](src/utils/haptics.js))
-iOS/Android install banner respecting `localStorage` dismissal; haptic
-feedback via `triggerHaptic` across tab switches, tier selection, wallet
-refills. App icons are generated procedurally — see
+### 7. PWA & mobile UX ([PWAInstallPrompt.jsx](src/components/PWAInstallPrompt.jsx) & [haptics.js](src/utils/haptics.js))
+iOS/Android install banner, gated behind auth, respecting `localStorage`
+dismissal; haptic feedback via `triggerHaptic` across tab switches, tier
+selection, wallet refills. App icons generated procedurally — see
 `scripts/generate-icons.ps1` (Windows/PowerShell original) or the
-Python/Pillow port used this session to regenerate `public/*.png`.
+Python/Pillow port used in an earlier session to regenerate `public/*.png`.
+
+---
+
+## 🧪 Test Suite
+Vitest + Testing Library, colocated `*.test.jsx` files, `jsdom` environment
+(`vite.config.js` → `test.setupFiles: ['./src/test-setup.js']`, only
+polyfills `localStorage` + `@testing-library/jest-dom`; **no `maplibre-gl`
+mock exists**, so `MapEngine.jsx` itself is not unit-tested — it requires a
+real WebGL/canvas context. Verify map changes by running the app, not by
+adding fake unit tests around it.
+
+- `src/context/TripContext.test.jsx` — `requestRide`/`cancelRequest`/
+  `resetTripState`/`completeRide`, including this session's new
+  `pickupCoords`/`dropoffCoords` coverage.
+- `src/context/AuthContext.test.jsx`
+- `src/components/PWAInstallPrompt.test.jsx`
+- `src/utils/useTimeout.test.js`
+
+Pattern: render a `TestConsumer` that calls the hook and exposes its API
+via a ref object, wrapped in the real Provider; assert on `data-testid`
+spans and call methods through the ref.
 
 ---
 
@@ -129,9 +173,24 @@ Python/Pillow port used this session to regenerate `public/*.png`.
 - Dev server: `npm run dev`
 - Build: `npm run build`
 - Preview production build: `npm run preview`
+- Test: `npm test -- --run` (32 tests, 4 files, all passing as of this
+  session)
 - Lint: `npm run lint` (0 errors, 2 pre-existing warnings — both
   `react(only-export-components)` in `AuthContext.jsx` / `TripContext.jsx`,
   harmless, about Fast Refresh not full lint failures)
 
-For a full manual walkthrough (sign-up, ride lifecycle, driver side, PWA
-install), see [DEMO_GUIDE.md](DEMO_GUIDE.md).
+For a full manual walkthrough (sign-up, ride lifecycle, driver side, map
+engine, PWA install), see [DEMO_GUIDE.md](DEMO_GUIDE.md).
+
+---
+
+## 🔭 Suggested Next Steps
+1. **Manual live-network verification** of fixes #2/#3 above (route
+   gradient rendering, car marker snapping to a newly selected route) —
+   this sandbox couldn't reach the tile/OSRM hosts to confirm visually.
+2. **`switchRole()` data loss** (Auth context, rough edge above) — decide
+   whether custom sign-up data should survive a role switch, or whether
+   the demo-preset behavior is intentional and just needs a UI note.
+3. **Tile host reliability** — if the new loading watchdog (fix #4) fires
+   often in the wild, consider a paid/self-hosted tile provider instead of
+   OpenFreeMap's free tier.
