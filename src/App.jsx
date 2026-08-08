@@ -29,6 +29,7 @@ import FeedbackModal from './components/FeedbackModal'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import SignUpFlow from './components/SignUpFlow'
 import RideConfirmSheet from './components/RideConfirmSheet'
+import HeroMoment from './components/HeroMoment'
 import { PREFERENCES, RIDE_TIERS, PRESET_DESTINATIONS, SAVED_PLACES } from './data/mockData'
 import { triggerHaptic } from './utils/haptics'
 
@@ -914,6 +915,7 @@ function AppShell({
 }) {
   const { user } = useAuth()
   const [immersive, setImmersive] = useState(false)
+  const [showHero, setShowHero] = useState(true)
 
   useEffect(() => {
     if (user?.role) setView(user.role)
@@ -953,6 +955,7 @@ function AppShell({
       <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <PWAInstallPrompt />
+      {showHero && <HeroMoment onDone={() => setShowHero(false)} />}
     </div>
   )
 }
