@@ -262,6 +262,22 @@ function MapEngineContent({
     mapStateRef.current = mapState
   }, [mapState])
 
+  /* ---------- Loading watchdog ---------- */
+  // On some networks (blocked/rate-limited third-party tile host, flaky
+  // cellular, content blockers) the style never fires 'load' *or* 'error' —
+  // it just hangs. Without a timeout the user is stuck on the spinner
+  // forever even though a fully working offline map is one state away.
+  useEffect(() => {
+    if (mapState !== 'loading') return
+    const timeout = setTimeout(() => {
+      if (mapStateRef.current === 'loading') {
+        console.warn('MapLibre style did not load in time — falling back to offline map')
+        setMapState('error')
+      }
+    }, 8000)
+    return () => clearTimeout(timeout)
+  }, [mapState])
+
   const map = mapRef.current
 
   /* ---------- Tap-to-pin ---------- */
