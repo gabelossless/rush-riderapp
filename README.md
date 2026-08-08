@@ -75,6 +75,9 @@ npm run build
 
 # 5. Run Oxlint code analysis
 npm run lint
+
+# 6. Run the Vitest test suite
+npm test -- --run
 ```
 
 ---

@@ -27,7 +27,7 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 
 ## 🚗 2. Passenger Ride Lifecycle Test
 
-1. After signing in (or **Explore the Demo → Alex Rivera**), you land on the map with a single **"Where to?"** bar — the primary action.
+1. After signing in (or **Explore the Demo → Alex Rivera**), a short **RUSH brand beat** plays (~5s): a car pulls up, a transparent fare card shows "$24.90 — No surge, 88% to the driver," then fades out. Tap anywhere to skip. You then land on the map with a single **"Where to?"** bar — the primary action.
 2. Pick a saved place (**Home / Work**), a **Recent** destination, or tap **"Where to?"** to search Denver destinations (Union Station, DIA, Red Rocks, Cherry Creek…).
 3. On the **Confirm** sheet, everything is one screen:
    * Route summary with walking note ("~2 min walk to pickup")

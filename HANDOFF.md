@@ -1,7 +1,7 @@
 # 🤝 Agent Handoff & Project Status Report
 
 **Repository**: [github.com/gabelossless/rush-riderapp](https://github.com/gabelossless/rush-riderapp)
-**Status**: 🟢 `main` and `claude/review-updates-tmxcdv` are both at `7d41546`, working tree clean, build/lint/tests all pass, fixes pushed live.
+**Status**: 🟢 `main` at `3f8c392`, working tree clean, build/lint/tests all pass, pushed live. 36/36 tests across 5 files.
 
 ---
 
@@ -14,9 +14,7 @@
 
 Session started with a code review of the prior session's three commits
 (`689e185` Real Denver map rewrite, `b2b51a3` PWA/UI polish, `0b5dfa9` test
-suite), then fixed everything the review + live testing turned up.
-
-1. **Driver's map showed nothing** — `DriverViewContent`'s `<MapShell>`
+suite), then fixed everything the review + live testing turned up.1. **Driver's map showed nothing** — `DriverViewContent`'s `<MapShell>`
    (`src/App.jsx`) passed only `showRoute`/`radar`, never `pickupCoords`/
    `dropoffCoords`/`carProgress`. `MapEngine` defaults those to `null`/`0`,
    so every coord-gated effect (route fetch, radar pulse, car position)
@@ -65,6 +63,20 @@ marker to the new route instead of leaving it on the old one.
 
 See `git log` for the full commit-by-commit history.
 
+### Latest session (post-merge)
+
+5. **HeroMoment brand beat** (`f3f5241`) — a new `HeroMoment` splash
+   ([src/components/HeroMoment.jsx](src/components/HeroMoment.jsx)) plays on
+   entry into the app shell: a car drives up, a transparent fare card
+   ($24.90, "No surge", 88%/12% split) fades in, and it auto-dismisses after
+   ~5s or on tap (`onDone` → `setShowHero(false)` in `AppShell`,
+   [src/App.jsx](src/App.jsx)). Mounted once per app-shell render via local
+   `useState`, so it plays on each login session. Includes 4 tests
+   ([HeroMoment.test.jsx](src/components/HeroMoment.test.jsx)).
+6. **Merged `origin/main`** (`7d41546` map fixes + `3ad3619` HANDOFF rewrite)
+   into the HeroMoment work via a clean ORT merge — no conflicts. Branch
+   synced and pushed; `main` now at `3f8c392`.
+
 ---
 
 ## 🧩 Current Architecture
@@ -90,7 +102,9 @@ email is recognized:
 ### 3. App shell ([App.jsx](src/App.jsx) — `AppShell`)
 Full-viewport layout (`h-[100dvh] w-full`, no phone-frame chrome). Header,
 the passenger/driver content, and the bottom tab bar (hidden during an
-active ride) all sit here. `RoleSwitch` in the header flips between:
+active ride) all sit here. On mount it renders `HeroMoment` (the ~5s brand
+beat with the fare card — see "This Session's Work" #5) unless already
+dismissed. `RoleSwitch` in the header flips between:
 - **`PassengerViewContent`**: `home ('Where to?') → dest (search/saved
   places/recents) → confirm (RideConfirmSheet) → searching → matched →
   completed`. Tracks real `pickupCoords`/`dropoffCoords` locally (default
@@ -156,10 +170,11 @@ real WebGL/canvas context. Verify map changes by running the app, not by
 adding fake unit tests around it.
 
 - `src/context/TripContext.test.jsx` — `requestRide`/`cancelRequest`/
-  `resetTripState`/`completeRide`, including this session's new
-  `pickupCoords`/`dropoffCoords` coverage.
+  `resetTripState`/`completeRide`, including the `pickupCoords`/
+  `dropoffCoords` coverage added for the map fixes.
 - `src/context/AuthContext.test.jsx`
 - `src/components/PWAInstallPrompt.test.jsx`
+- `src/components/HeroMoment.test.jsx`
 - `src/utils/useTimeout.test.js`
 
 Pattern: render a `TestConsumer` that calls the hook and exposes its API
@@ -173,7 +188,7 @@ spans and call methods through the ref.
 - Dev server: `npm run dev`
 - Build: `npm run build`
 - Preview production build: `npm run preview`
-- Test: `npm test -- --run` (32 tests, 4 files, all passing as of this
+- Test: `npm test -- --run` (36 tests, 5 files, all passing as of this
   session)
 - Lint: `npm run lint` (0 errors, 2 pre-existing warnings — both
   `react(only-export-components)` in `AuthContext.jsx` / `TripContext.jsx`,
