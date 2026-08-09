@@ -7,10 +7,29 @@ const TRIP_STATE_KEY = 'rush_current_trip_state'
 const TRIP_HISTORY_KEY = 'rush_trip_history'
 
 export function TripProvider({ children }) {
+  const isStaleTrip = (t) => {
+    if (!t) return false
+    // Active statuses are OK; terminal/cancelled states lingering in storage
+    // would confuse the demo flow on reload.
+    const active = ['SEARCHING', 'ACCEPTED', 'IN_PROGRESS']
+    if (!active.includes(t.status)) return true
+    // A trip sitting in SEARCHING without progress for >15 min is stale.
+    try {
+      const created = new Date(t.createdAt || '')
+      if (!isNaN(created.getTime()) && Date.now() - created.getTime() > 15 * 60 * 1000) {
+        return true
+      }
+    } catch {
+      return true
+    }
+    return false
+  }
+
   const [currentTrip, setCurrentTrip] = useState(() => {
     try {
       const saved = localStorage.getItem(TRIP_STATE_KEY)
-      return saved ? JSON.parse(saved) : null
+      const parsed = saved ? JSON.parse(saved) : null
+      return isStaleTrip(parsed) ? null : parsed
     } catch {
       return null
     }

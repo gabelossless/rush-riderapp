@@ -278,7 +278,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
   const handleRequestRide = () => {
     triggerHaptic('medium')
-    if (user && user.walletBalance < totalFare) {
+    if (user && user.walletBalance < totalFare && !user.isDemo) {
       setDemoNotification('Insufficient wallet balance. Please add demo funds.')
       timers.set(() => setDemoNotification(null), 3000)
       onOpenWallet()

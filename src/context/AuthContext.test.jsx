@@ -103,6 +103,15 @@ describe('AuthContext', () => {
     })
   })
 
+  describe('demoLogin', () => {
+    it('marks the session as demo so the simulation wallet never dead-ends', () => {
+      const api = renderAuth()
+      act(() => api.current.demoLogin('passenger'))
+      expect(screen.getByTestId('user-role')).toHaveTextContent('passenger')
+      expect(api.current.user.isDemo).toBe(true)
+    })
+  })
+
   describe('switchRole', () => {
     it('preserves custom identity when passenger switches to driver', () => {
       const api = renderAuth()
@@ -171,6 +180,29 @@ describe('AuthContext', () => {
         result = api.current.loginWithEmail('unknown@test.com')
       })
       expect(result).toBeNull()
+    })
+  })
+
+  describe('deductRiderFare', () => {
+    it('deducts from a normal rider balance', () => {
+      const api = renderAuth()
+      act(() => api.current.login({ id: 'u1', name: 'U', email: 'u@t.com', role: 'passenger', walletBalance: 50 }))
+      act(() => api.current.deductRiderFare(20))
+      expect(api.current.user.walletBalance).toBe(30)
+    })
+
+    it('auto-refills a demo user whose balance drops below 25', () => {
+      const api = renderAuth()
+      act(() => api.current.login({ id: 'u1', name: 'U', email: 'u@t.com', role: 'passenger', walletBalance: 30, isDemo: true }))
+      act(() => api.current.deductRiderFare(20))
+      expect(api.current.user.walletBalance).toBe(250)
+    })
+
+    it('does not auto-refill non-demo users below 25', () => {
+      const api = renderAuth()
+      act(() => api.current.login({ id: 'u1', name: 'U', email: 'u@t.com', role: 'passenger', walletBalance: 30 }))
+      act(() => api.current.deductRiderFare(20))
+      expect(api.current.user.walletBalance).toBe(10)
     })
   })
 })

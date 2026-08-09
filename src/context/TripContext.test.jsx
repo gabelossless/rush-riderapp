@@ -171,6 +171,38 @@ describe('TripContext', () => {
     })
   })
 
+  describe('stale trip handling', () => {
+    it('discards a trip left in terminal state on reload', () => {
+      localStorage.setItem(
+        'rush_current_trip_state',
+        JSON.stringify({ id: 'old', status: 'COMPLETED', createdAt: new Date().toISOString(), pickup: 'P', destination: 'D' })
+      )
+      const api = renderTrip()
+      expect(api.current.currentTrip).toBeNull()
+      expect(localStorage.getItem('rush_current_trip_state')).toBeNull()
+    })
+
+    it('discards a SEARCHING trip older than 15 minutes', () => {
+      const old = new Date(Date.now() - 20 * 60 * 1000).toISOString()
+      localStorage.setItem(
+        'rush_current_trip_state',
+        JSON.stringify({ id: 'old', status: 'SEARCHING', createdAt: old, pickup: 'P', destination: 'D' })
+      )
+      const api = renderTrip()
+      expect(api.current.currentTrip).toBeNull()
+    })
+
+    it('keeps a fresh SEARCHING trip', () => {
+      const fresh = new Date().toISOString()
+      localStorage.setItem(
+        'rush_current_trip_state',
+        JSON.stringify({ id: 'live', status: 'SEARCHING', createdAt: fresh, pickup: 'P', destination: 'D' })
+      )
+      const api = renderTrip()
+      expect(api.current.currentTrip?.status).toBe('SEARCHING')
+    })
+  })
+
   describe('completeRide', () => {
     it('moves trip to history and clears current trip', () => {
       const api = renderTrip()

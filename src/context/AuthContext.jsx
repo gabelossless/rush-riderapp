@@ -116,7 +116,8 @@ export function AuthProvider({ children }) {
   }
 
   const demoLogin = (role) => {
-    setUser(role === 'driver' ? PRESET_ACCOUNTS.driver : PRESET_ACCOUNTS.rider)
+    const base = role === 'driver' ? PRESET_ACCOUNTS.driver : PRESET_ACCOUNTS.rider
+    setUser({ ...base, isDemo: true })
   }
 
   const switchRole = (newRole) => {
@@ -173,11 +174,19 @@ export function AuthProvider({ children }) {
 
   const deductRiderFare = (amount) => {
     if (!user) return
-    setUser((prev) => ({
-      ...prev,
-      walletBalance: Math.max(0, (prev.walletBalance || 0) - amount),
-      totalRides: (prev.totalRides || 0) + 1,
-    }))
+    setUser((prev) => {
+      let nextBalance = Math.max(0, (prev.walletBalance || 0) - amount)
+      // Demo accounts auto-refill after each ride so the simulation never
+      // dead-ends on an empty wallet (keeps the demo frictionless).
+      if (prev.isDemo && nextBalance < 25) {
+        nextBalance = prev.role === 'driver' ? 488.2 : 250
+      }
+      return {
+        ...prev,
+        walletBalance: nextBalance,
+        totalRides: (prev.totalRides || 0) + 1,
+      }
+    })
   }
 
   return (

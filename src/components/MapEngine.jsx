@@ -136,7 +136,7 @@ function MapEngineContent({
         container,
         style: STYLE_URL,
         center: [DENVER_CENTER.lng, DENVER_CENTER.lat],
-        zoom: 11.5,
+        zoom: 10.3,
         attributionControl: false,
         fadeDuration: 120,
       })
@@ -305,7 +305,7 @@ function MapEngineContent({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords
-        map.flyTo({ center: [longitude, latitude], zoom: 12.5, duration: 1800 })
+        map.flyTo({ center: [longitude, latitude], zoom: 11, duration: 1800 })
         if (userMarkerRef.current) {
           userMarkerRef.current.setLngLat([longitude, latitude])
         } else {
@@ -328,7 +328,7 @@ function MapEngineContent({
   const focusDenver = () => {
     if (!map) return
     setShowFocusDenver(false)
-    map.flyTo({ center: [DENVER_CENTER.lng, DENVER_CENTER.lat], zoom: 11.5, duration: 1400 })
+    map.flyTo({ center: [DENVER_CENTER.lng, DENVER_CENTER.lat], zoom: 10.3, duration: 1400 })
   }
 
   /* ---------- Route fetching (OSRM) ---------- */
@@ -362,7 +362,8 @@ function MapEngineContent({
         // Fit the route into view
         const bounds = new LngLatBounds()
         geometry.coordinates.forEach((c) => bounds.extend(c))
-        map.fitBounds(bounds, { padding: 70, duration: 900, maxZoom: 13.5 })
+        .zoom(12.5, { duration: 900 })
+        .fitBounds(bounds, { padding: 70, duration: 900, maxZoom: 12.5 })
         setRouteVersion((v) => v + 1)
       })
       .catch((err) => {
