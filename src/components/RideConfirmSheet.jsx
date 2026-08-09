@@ -59,19 +59,19 @@ export default function RideConfirmSheet({
       </div>
 
       {/* Route summary */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04] p-3.5 backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-zinc-900/95 p-3.5 shadow-2xl shadow-black/80 backdrop-blur-xl">
         <div className="absolute left-[27px] top-[30px] bottom-[30px] w-[2px] bg-gradient-to-b from-[#38BDF8] to-[#818CF8]" />
         <div className="flex items-center gap-3 py-1">
           <span className="relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#38BDF8]/20">
             <span className="h-2 w-2 rounded-full bg-[#38BDF8]" />
           </span>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-extrabold uppercase tracking-wider text-white/40">
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
               Pickup
             </span>
             <p className="truncate text-[13px] font-bold text-white">{pickup}</p>
           </div>
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-[9.5px] font-semibold text-white/55">
+          <span className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-2 text-[9.5px] font-semibold text-white/55">
             <Footprints size={11} /> {walkingNote}
           </span>
         </div>
@@ -80,7 +80,7 @@ export default function RideConfirmSheet({
             <Navigation size={12} className="text-[#818CF8]" />
           </span>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-extrabold uppercase tracking-wider text-white/40">
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
               Destination
             </span>
             <p className="truncate text-[13px] font-bold text-white">{destination?.name}</p>
@@ -99,7 +99,7 @@ export default function RideConfirmSheet({
             triggerHaptic('light')
             setShowTiers(!showTiers)
           }}
-          className="relative flex w-full items-center gap-3 rounded-2xl border border-[#38BDF8]/50 bg-[#38BDF8]/[0.07] p-3.5 text-left transition-all active:scale-[0.99]"
+          className="relative flex w-full items-center gap-3 rounded-2xl border-2 border-[#38BDF8]/60 bg-[#38BDF8]/[0.1] p-3.5 text-left shadow-lg shadow-[#38BDF8]/10 transition-all active:scale-[0.99]"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#38BDF8]/15 text-[#38BDF8]">
             <tier.icon size={21} />
@@ -168,15 +168,15 @@ export default function RideConfirmSheet({
       </div>
 
       {/* FairFare chip + no-surge line */}
-      <div className="mt-2 rounded-2xl border border-[#34D399]/25 bg-[#34D399]/[0.05]">
+      <div className="mt-2 rounded-2xl border border-[#34D399]/25 bg-zinc-900/95 shadow-2xl shadow-black/80 backdrop-blur-xl">
         <button
           onClick={() => {
             triggerHaptic('light')
             setShowFairFare(!showFairFare)
           }}
-          className="flex w-full items-center justify-between px-3.5 py-2.5 text-left"
+          className="inline-flex h-11 w-full items-center justify-between px-3.5 text-left"
         >
-          <span className="flex items-center gap-2 text-[11.5px] font-bold text-[#34D399]">
+          <span className="flex items-center gap-2 text-[12px] font-extrabold text-[#34D399]">
             <ShieldCheck size={14} /> 88% of your fare goes to your driver
           </span>
           <span className="text-[#34D399]/70">
@@ -219,7 +219,7 @@ export default function RideConfirmSheet({
       </p>
 
       {/* Payment + CTA */}
-      <div className="mt-2 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-[11px]">
+      <div className="mt-2 flex items-center justify-between rounded-xl border border-white/15 bg-white/[0.05] px-3.5 text-[12px]">
         <span className="text-white/50">Payment</span>
         <button
           onClick={onOpenWallet}

@@ -133,40 +133,40 @@ function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
       <div className="mx-auto flex max-w-lg items-center justify-between px-6">
         <button
           onClick={() => triggerHaptic('click')}
-          className="flex flex-col items-center gap-1 text-[#38BDF8] active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-1.5 text-[#38BDF8] active:scale-95 transition-transform"
         >
           <Home size={19} strokeWidth={2.2} />
-          <span className="text-[9px] font-semibold text-white/80">Ride</span>
+          <span className="text-xs font-semibold text-white/80">Ride</span>
         </button>
         <button
           onClick={() => {
             triggerHaptic('click')
             onOpenWallet()
           }}
-          className="flex flex-col items-center gap-1 text-white/40 hover:text-white active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-1.5 text-white/40 hover:text-white active:scale-95 transition-transform"
         >
           <Wallet size={19} strokeWidth={2.2} />
-          <span className="text-[9px] font-semibold text-white/60">Wallet</span>
+          <span className="text-xs font-semibold text-white/60">Wallet</span>
         </button>
         <button
           onClick={() => {
             triggerHaptic('click')
             onOpenHistory()
           }}
-          className="flex flex-col items-center gap-1 text-white/40 hover:text-white active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-1.5 text-white/40 hover:text-white active:scale-95 transition-transform"
         >
           <Clock size={19} strokeWidth={2.2} />
-          <span className="text-[9px] font-semibold text-white/60">History</span>
+          <span className="text-xs font-semibold text-white/60">History</span>
         </button>
         <button
           onClick={() => {
             triggerHaptic('click')
             onOpenFeedback()
           }}
-          className="flex flex-col items-center gap-1 text-white/40 hover:text-white active:scale-95 transition-transform"
+          className="flex flex-col items-center gap-1.5 text-white/40 hover:text-white active:scale-95 transition-transform"
         >
           <MessageSquare size={19} strokeWidth={2.2} />
-          <span className="text-[9px] font-semibold text-white/60">Feedback</span>
+          <span className="text-xs font-semibold text-white/60">Feedback</span>
         </button>
       </div>
       <div className="mx-auto mt-2 h-1 w-24 rounded-full bg-white/15" />
@@ -811,16 +811,16 @@ function DriverViewContent({ onImmersiveChange }) {
           </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-white/55">Today</span>
+            <div className="rounded-2xl border border-white/15 bg-zinc-900/90 p-3 shadow-lg shadow-black/60">
+              <span className="text-xs font-semibold uppercase tracking-wider text-white/55">Today</span>
               <p className="mt-0.5 text-[15px] font-extrabold text-white">{usd(user?.todayEarnings || 286.4)}</p>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-white/55">Trips</span>
+            <div className="rounded-2xl border border-white/15 bg-zinc-900/90 p-3 shadow-lg shadow-black/60">
+              <span className="text-xs font-semibold uppercase tracking-wider text-white/55">Trips</span>
               <p className="mt-0.5 text-[15px] font-extrabold text-[#38BDF8]">{user?.todayRides || 14}</p>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-2.5">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-white/55">Keep Rate</span>
+            <div className="rounded-2xl border border-white/15 bg-zinc-900/90 p-3 shadow-lg shadow-black/60">
+              <span className="text-xs font-semibold uppercase tracking-wider text-white/55">Keep Rate</span>
               <p className="mt-0.5 text-[15px] font-extrabold text-[#34D399]">88%</p>
             </div>
           </div>
