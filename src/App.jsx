@@ -35,6 +35,14 @@ import { triggerHaptic } from './utils/haptics'
 
 const usd = (n) => `$${(n || 0).toFixed(2)}`
 const DRIVER_PCT = 0.88
+const DEMO_DRIVER = {
+  name: 'Marcus Vance',
+  car: 'Tesla Model Y — Matte Black',
+  plate: 'RUSH-88',
+  rating: 4.98,
+  initials: 'MV',
+  verified: true,
+}
 
 // MapLibre is a large dependency — lazy-load it so the auth landing page
 // and app shell stay instant. The map is network-dependent anyway.
@@ -248,8 +256,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     let timeout
     if (currentTrip?.status === 'IN_PROGRESS') {
       timeout = setTimeout(() => {
-        updateProgress(Math.min(1, (currentTrip.progress || 0.1) + 0.005))
-      }, 100)
+        updateProgress(Math.min(1, (currentTrip.progress || 0.1) + 0.015))
+      }, 80)
     }
     return () => clearTimeout(timeout)
   }, [currentTrip?.status, currentTrip?.progress, updateProgress])
@@ -298,29 +306,37 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     setStage('searching')
   }
 
-  const handleAutoMatchDriver = () => {
-    triggerHaptic('success')
-    acceptRide({
-      name: 'Marcus Vance',
-      car: 'Tesla Model Y — Matte Black',
-      plate: 'RUSH-88',
-      rating: 4.98,
-      initials: 'MV',
-      verified: true,
-    })
-  }
+  // Auto-advancing demo ride lifecycle (Uber/Lyft-style watchable simulation).
+  //   SEARCHING → ACCEPTED (driver matches) → IN_PROGRESS (en route → pickup → ride) → COMPLETED
+  const tripStatus = currentTrip?.status
+  const tripProgress = currentTrip?.progress || 0
+  useEffect(() => {
+    if (!currentTrip) return
+    let t
 
-  const handleSimulateStartTrip = () => {
-    triggerHaptic('medium')
-    startRide()
-  }
+    if (tripStatus === 'SEARCHING') {
+      // Match a demo driver after a short realistic wait.
+      t = setTimeout(() => acceptRide(DEMO_DRIVER), 2500)
+    } else if (tripStatus === 'ACCEPTED') {
+      // Simulate: driver en route, then pickup, then begin the trip.
+      t = setTimeout(() => {
+        setDemoNotification('Marcus is here — hop in!')
+        setTimeout(() => {
+          setDemoNotification(null)
+          startRide()
+        }, 1800)
+      }, 3500)
+    } else if (tripStatus === 'IN_PROGRESS' && tripProgress >= 1) {
+      // Auto-complete once the car animation reaches the destination.
+      t = setTimeout(() => {
+        completeRide()
+        setDemoNotification(`Trip complete — ${usd(currentTrip.fare)} charged.`)
+        setTimeout(() => setDemoNotification(null), 3500)
+      }, 600)
+    }
 
-  const handleSimulateCompleteTrip = () => {
-    triggerHaptic('success')
-    completeRide()
-    setDemoNotification(`Trip Complete! Fare of ${usd(currentTrip?.fare)} processed.`)
-    timers.set(() => setDemoNotification(null), 3500)
-  }
+    return () => clearTimeout(t)
+  }, [currentTrip, tripStatus, tripProgress, acceptRide, startRide, completeRide])
 
   const finishCompleted = () => {
     triggerHaptic('success')
@@ -496,22 +512,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 <span className="absolute inset-0 rounded-full border border-[#38BDF8]/40 animate-pulse-ring" />
                 <Radio size={28} className="animate-spin text-[#38BDF8]" style={{ animationDuration: '2s' }} />
               </div>
-              <p className="text-[14px] font-extrabold text-white">Matching you with a human driver…</p>
-              <p className="mt-1 text-center text-[11px] font-medium leading-relaxed text-white/50">
+              <p className="text-base font-extrabold text-white">Matching you with a human driver…</p>
+              <p className="mt-1 text-center text-xs font-medium leading-relaxed text-white/50">
                 {searchNote
                   ? 'Still searching — expanding to nearby neighborhoods. Typically adds 3–6 min in Denver.'
                   : 'Usually takes 2–4 minutes in your area.'}
-              </p>
-
-              <button
-                onClick={handleAutoMatchDriver}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#34D399]/50 bg-[#34D399]/15 py-2.5 text-[12px] font-extrabold text-[#34D399] transition-all active:scale-[0.98]"
-              >
-                <Zap size={14} /> Auto-Match Demo Driver
-              </button>
-
-              <p className="mt-2 text-[9.5px] font-semibold text-white/40">
-                Or tap "Driver" in the header to accept the request manually
               </p>
 
               <button
@@ -519,7 +524,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                   triggerHaptic('light')
                   cancelRequest()
                 }}
-                className="mt-3 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-1.5 text-[11px] font-bold text-white/60 hover:text-white"
+                className="mt-4 rounded-xl border border-white/15 bg-white/[0.05] px-4 py-2 text-xs font-bold text-white/50 hover:text-white active:scale-95"
               >
                 Cancel Request
               </button>
@@ -537,13 +542,13 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           >
             <div className="glass w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
               <div className="mb-3 flex items-center justify-between">
-                <span className="rounded-full bg-[#38BDF8]/20 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#38BDF8]">
+                <span className="rounded-full bg-[#38BDF8]/20 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#38BDF8]">
                   {currentTrip.status === 'ACCEPTED' ? 'Driver En Route' : 'Trip In Progress'}
                 </span>
-                <span className="text-[12px] font-black text-[#34D399]">{usd(currentTrip.fare)}</span>
+                <span className="text-sm font-black text-[#34D399]">{usd(currentTrip.fare)}</span>
               </div>
 
-              <div className="flex items-center gap-3.5 rounded-2xl border border-white/8 bg-white/[0.04] p-3">
+              <div className="flex items-center gap-3.5 rounded-2xl border border-white/15 bg-zinc-900/90 p-3 shadow-lg shadow-black/60">
                 <Avatar size={44} initials={currentTrip.driver?.initials || 'MV'} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -551,7 +556,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                       {currentTrip.driver?.name || 'Marcus Vance'}
                     </p>
                     {(currentTrip.driver?.verified ?? true) && (
-                      <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#34D399]/15 px-2 py-0.5 text-[8.5px] font-extrabold uppercase tracking-wider text-[#34D399]">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#34D399]/15 px-2 py-0.5 text-xs font-extrabold uppercase tracking-wider text-[#34D399]">
                         <ShieldCheck size={10} /> Verified Human
                       </span>
                     )}
@@ -562,14 +567,46 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="rounded-md border border-white/15 bg-white/[0.05] px-2 py-1 text-[9px] font-bold tracking-widest text-white/70">
+                  <span className="rounded-md border border-white/15 bg-white/[0.05] px-2 py-1 text-xs font-bold tracking-widest text-white/70">
                     {currentTrip.driver?.plate || 'RUSH-88'}
                   </span>
                 </div>
               </div>
 
+              {/* Live status timeline */}
+              <div className="mt-3 space-y-2.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#38BDF8] text-[#061018]">
+                    <Check size={12} />
+                  </span>
+                  <span className="text-xs font-semibold text-white">Driver matched — Marcus is on the way</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                    currentTrip.status === 'ACCEPTED' ? 'bg-[#38BDF8]/30' : 'bg-[#38BDF8] text-[#061018]'
+                  }`}>
+                    {currentTrip.status === 'ACCEPTED' ? (
+                      <Radio size={10} className="animate-spin text-[#38BDF8]" />
+                    ) : (
+                      <Check size={12} />
+                    )}
+                  </span>
+                  <span className="text-xs font-semibold text-white">Driver arrives &mdash; pickup confirmed</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                    currentTrip.status === 'IN_PROGRESS' ? 'bg-[#38BDF8]/30' : 'bg-white/10'
+                  }`}>
+                    {currentTrip.status === 'IN_PROGRESS' && (
+                      <Car size={10} className="text-[#38BDF8] animate-bounce" />
+                    )}
+                  </span>
+                  <span className="text-xs font-semibold text-white">Trip in progress &mdash; en route to destination</span>
+                </div>
+              </div>
+
               {/* Trip preferences — moved to in-ride, small and quiet */}
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {PREFERENCES.filter((p) => ['quiet', 'ac'].includes(p.key)).map((p) => {
                   const Icon = p.icon
                   return (
@@ -583,33 +620,26 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 })}
               </div>
 
-              {/* Ride Lifecycle Demo Actions */}
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {currentTrip.status === 'ACCEPTED' ? (
-                  <button
-                    onClick={handleSimulateStartTrip}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[#38BDF8]/40 bg-[#38BDF8]/15 py-2 text-[11px] font-bold text-[#38BDF8] active:scale-95"
-                  >
-                    Start Ride Demo
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSimulateCompleteTrip}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[#34D399]/40 bg-[#34D399]/15 py-2 text-[11px] font-bold text-[#34D399] active:scale-95"
-                  >
-                    <Check size={14} /> Complete Ride
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    triggerHaptic('light')
-                    cancelRequest()
-                  }}
-                  className="flex items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] py-2 text-[11px] font-semibold text-white/50 hover:text-white"
-                >
-                  End Session
-                </button>
-              </div>
+              {/* In-ride progress bar (visible while IN_PROGRESS) */}
+              {currentTrip.status === 'IN_PROGRESS' && (
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full w-full max-w-full rounded-full bg-gradient-to-r from-[#38BDF8] to-[#818CF8] transition-all"
+                    style={{ width: `${Math.round((currentTrip.progress || 0) * 100)}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Only escape hatch: End Session */}
+              <button
+                onClick={() => {
+                  triggerHaptic('light')
+                  cancelRequest()
+                }}
+                className="mt-3 w-full rounded-xl border border-white/15 bg-white/[0.05] py-2 text-xs font-semibold text-white/50 hover:text-white active:scale-95"
+              >
+                End Session
+              </button>
             </div>
           </motion.div>
         )}
