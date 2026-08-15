@@ -1,23 +1,57 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Wallet, Plus, ArrowUpRight, ArrowDownLeft, Check } from 'lucide-react'
+import { X, Wallet, Plus, ArrowUpRight, ArrowDownLeft, Check, Receipt } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useTrip } from '../context/TripContext'
 import useTimeout from '../utils/useTimeout'
 import { triggerHaptic } from '../utils/haptics'
 
+const DRIVER_PCT = 0.88
+
 export default function WalletModal({ isOpen, onClose }) {
   const { user, addFunds } = useAuth()
+  const { tripHistory } = useTrip()
   const [successToast, setSuccessToast] = useState(false)
+  const [demoDeposits, setDemoDeposits] = useState([]) // funds added this session
   const timers = useTimeout()
+  const isDriver = user.role === 'driver'
 
   const handleAddFunds = (amt) => {
     triggerHaptic('success')
     addFunds(amt)
+    setDemoDeposits((prev) => [{ id: `dep_${Date.now()}`, amount: amt, at: new Date().toISOString() }, ...prev])
     setSuccessToast(true)
     timers.set(() => setSuccessToast(false), 2500)
   }
 
   const usd = (n) => `$${(n || 0).toFixed(2)}`
+
+  // Real activity feed — combines actual completed trips with demo funds
+  // added this session, instead of two fixed sample rows that never
+  // reflected anything the person testing the demo actually did.
+  const activity = useMemo(() => {
+    const rideEntries = tripHistory.map((t) => ({
+      id: t.id,
+      at: t.date,
+      icon: isDriver ? ArrowDownLeft : ArrowUpRight,
+      tint: isDriver ? '#34D399' : '#38BDF8',
+      label: isDriver ? `${t.tier || 'Ride'} Payout` : `${t.tier || 'Ride'}`,
+      sub: `${t.pickup} → ${t.destination}`,
+      amount: isDriver ? (t.fare || 0) * DRIVER_PCT : -(t.fare || 0),
+    }))
+    const depositEntries = demoDeposits.map((d) => ({
+      id: d.id,
+      at: d.at,
+      icon: ArrowDownLeft,
+      tint: '#34D399',
+      label: 'Test Fund Deposit',
+      sub: 'Demo instant refill',
+      amount: d.amount,
+    }))
+    return [...rideEntries, ...depositEntries]
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, 5)
+  }, [tripHistory, demoDeposits, isDriver])
 
   return (
     <AnimatePresence>
@@ -98,36 +132,48 @@ export default function WalletModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Sample Recent Transactions */}
+          {/* Recent Activity — real, not a fixed sample */}
           <div className="mt-5">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/50">Recent Activity</h3>
-            <div className="mt-2 flex flex-col gap-2">
-              <div className="flex items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#34D399]/15 text-[#34D399]">
-                    <ArrowDownLeft size={16} />
-                  </span>
-                  <div>
-                    <p className="text-[12.5px] font-bold text-white">Test Fund Deposit</p>
-                    <p className="text-[10px] text-white/40">Demo Instant Refill</p>
-                  </div>
-                </div>
-                <span className="text-[13px] font-bold text-[#34D399]">+$50.00</span>
+            {activity.length === 0 ? (
+              <div className="mt-2 flex flex-col items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] py-6 text-center">
+                <Receipt size={18} className="text-white/25" />
+                <p className="text-[11.5px] font-medium text-white/40">Nothing yet — take a ride or add funds.</p>
               </div>
-
-              <div className="flex items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#38BDF8]/15 text-[#38BDF8]">
-                    <ArrowUpRight size={16} />
-                  </span>
-                  <div>
-                    <p className="text-[12.5px] font-bold text-white">Rush Express Ride</p>
-                    <p className="text-[10px] text-white/60 truncate">Current Location → Union Station</p>
-                  </div>
-                </div>
-                <span className="text-[13px] font-bold text-white/80">-$24.90</span>
+            ) : (
+              <div className="mt-2 flex flex-col gap-2">
+                {activity.map((item) => {
+                  const Icon = item.icon
+                  const positive = item.amount >= 0
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.03] p-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                          style={{ background: `${item.tint}22`, color: item.tint }}
+                        >
+                          <Icon size={16} />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-[12.5px] font-bold text-white">{item.label}</p>
+                          <p className="truncate text-[10px] text-white/45">{item.sub}</p>
+                        </div>
+                      </div>
+                      <span
+                        className="shrink-0 text-[13px] font-bold"
+                        style={{ color: positive ? '#34D399' : 'rgba(255,255,255,0.8)' }}
+                      >
+                        {positive ? '+' : '-'}
+                        {usd(Math.abs(item.amount))}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
-            </div>
+            )}
           </div>
         </motion.div>
       </div>)}</AnimatePresence>

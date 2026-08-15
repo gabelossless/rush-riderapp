@@ -144,6 +144,40 @@ visibly rotate as they roam; confirm the map tilts when a trip goes
 `IN_PROGRESS`; and confirm the Google Maps/Waze buttons open with the
 correct coordinates on a phone.
 
+### Latest session — Trip History redesign + investor-demo UI polish
+
+13. **`HistoryModal.jsx` rewritten.** The `date` field on every trip record
+    was already there and was never rendered anywhere — a "history" screen
+    with no dates on it. Now: trips are grouped under day headers
+    (Today/Yesterday/`Aug 4`), each row shows its time, the header subtitle
+    computes a real summary (`N rides · $X spent/earned`, role-aware via
+    `useAuth`), and tapping a row expands the same driver/platform FairFare
+    receipt breakdown used on the completed-ride screen — reusing that
+    visual language instead of inventing a new one. Dropped the per-row
+    "Completed ✓" badge: every trip in this data model is terminally
+    `Completed` (`cancelRequest()` never appends to `tripHistory`), so it
+    was 100% noise repeated on every card; the freed space went to the time,
+    which is actually informative. Empty state now has a working "Book your
+    first ride" button (`onClose()`) instead of being a dead end. Scroll
+    container switched from a hardcoded `max-h-[400px]` + native scrollbar
+    to viewport-relative (`85dvh`) + `no-scrollbar`, matching every other
+    sheet in the app.
+14. **`WalletModal.jsx` — fixed fake "Recent Activity."** It was two
+    hardcoded rows ("+$50.00 Test Fund Deposit", "-$24.90 Rush Express
+    Ride") that never changed no matter what the person testing the demo
+    actually did — click "+$50" twice in front of an investor and the
+    ledger visibly doesn't move. Replaced with a real feed merging actual
+    `tripHistory` (fare debit for riders / 88% payout credit for drivers)
+    with an in-session list of demo deposits, sorted by timestamp, capped
+    at 5, with a proper empty state.
+15. **`AccountModal.jsx` header** brought in line with the other three
+    modals (Wallet/History/Feedback all use an icon badge + title +
+    subtitle header; Account was plain text with no icon) — consistency
+    across the four sheets instead of one being visibly different.
+16. **`FeedbackModal.jsx`** — unselected category buttons were
+    `text-white/40` on `bg-white/[0.03]`, low enough contrast to hurt
+    readability; bumped to `/55`.
+
 ---
 
 ## 🧩 Current Architecture

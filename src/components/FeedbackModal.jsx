@@ -93,7 +93,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
                     className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[11px] font-bold transition-all ${
                       category === 'feature'
                         ? 'border-[#38BDF8] bg-[#38BDF8]/15 text-white'
-                        : 'border-white/10 bg-white/[0.03] text-white/40'
+                        : 'border-white/10 bg-white/[0.03] text-white/55'
                     }`}
                   >
                     <Sparkles size={13} /> Feature
@@ -104,7 +104,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
                     className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[11px] font-bold transition-all ${
                       category === 'ux'
                         ? 'border-[#6366F1] bg-[#6366F1]/20 text-white'
-                        : 'border-white/10 bg-white/[0.03] text-white/40'
+                        : 'border-white/10 bg-white/[0.03] text-white/55'
                     }`}
                   >
                     <MessageSquare size={13} /> UX / Design
@@ -115,7 +115,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
                     className={`flex items-center justify-center gap-1 rounded-xl border py-2 text-[11px] font-bold transition-all ${
                       category === 'bug'
                         ? 'border-rose-500 bg-rose-500/20 text-white'
-                        : 'border-white/10 bg-white/[0.03] text-white/40'
+                        : 'border-white/10 bg-white/[0.03] text-white/55'
                     }`}
                   >
                     <Bug size={13} /> Bug Report
