@@ -132,15 +132,14 @@
   transform: rotate(45deg);
   box-shadow: 0 0 10px rgba(129, 140, 248, 0.9);
 }
-.rush-car-dot {
+.rush-car-arrow {
   position: absolute;
-  left: -8px;
-  top: -6px;
-  width: 16px;
-  height: 12px;
-  border-radius: 4px;
-  background: #0a0d15;
-  border: 2px solid #38bdf8;
+  left: -9px;
+  top: -9px;
+  width: 18px;
+  height: 18px;
+  clip-path: polygon(50% 0%, 85% 100%, 50% 76%, 15% 100%);
+  background: linear-gradient(180deg, #38bdf8, #818cf8);
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.95);
 }
 .rush-user-dot {
@@ -188,7 +187,7 @@
 .rush-radar-ring,
 .rush-surge-ring,
 .rush-surge-core,
-.rush-car-dot,
+.rush-car-arrow,
 .rush-user-dot {
   pointer-events: none;
 }
