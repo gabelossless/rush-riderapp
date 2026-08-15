@@ -211,7 +211,14 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const [lastCompleted, setLastCompleted] = useState(null)
 
   const currentTierObj = RIDE_TIERS.find((t) => t.id === selectedTier) || RIDE_TIERS[0]
-  const basePrice = destination?.distance ? parseFloat(destination.distance) * 2.2 + 10 : 22.5
+  // Prefer the numeric distanceMiles a geocoded destination carries (see
+  // handleSelectDestination) over parsing the display string — that string
+  // is prefixed "~" for estimated addresses, which parseFloat can't read
+  // (parseFloat('~3.2 mi') is NaN, silently corrupting every fare/wallet
+  // calculation downstream). Number.isFinite guards every path so basePrice
+  // can never itself become NaN.
+  const estimatedMiles = destination?.distanceMiles ?? parseFloat(destination?.distance)
+  const basePrice = Number.isFinite(estimatedMiles) ? estimatedMiles * 2.2 + 10 : 22.5
   const totalFare = Math.round(basePrice * currentTierObj.multiplier * 100) / 100
 
   const recents = useMemo(() => {
@@ -290,7 +297,10 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     let d = dest
     if (!d.distance && d.latlng) {
       const miles = haversineMiles(pickupCoords, d.latlng)
-      if (miles != null) d = { ...d, distance: `~${miles.toFixed(1)} mi` }
+      // distanceMiles is the numeric value the fare calc actually uses;
+      // `distance` stays a display-only string (its "~" prefix isn't
+      // parseFloat-safe, see basePrice above).
+      if (miles != null) d = { ...d, distance: `~${miles.toFixed(1)} mi`, distanceMiles: miles }
     }
     setDestination(d)
     if (d.latlng) setDropoffCoords(d.latlng)
@@ -336,8 +346,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   //   SEARCHING → ACCEPTED (driver matches) → IN_PROGRESS (en route → pickup → ride) → COMPLETED
   const tripStatus = currentTrip?.status
   const tripProgress = currentTrip?.progress || 0
+  const tripFare = currentTrip?.fare
   useEffect(() => {
-    if (!currentTrip) return
+    if (!tripStatus) return
     let t
 
     if (tripStatus === 'SEARCHING') {
@@ -356,13 +367,19 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
       // Auto-complete once the car animation reaches the destination.
       t = setTimeout(() => {
         completeRide()
-        setDemoNotification(`Trip complete — ${usd(currentTrip.fare)} charged.`)
+        setDemoNotification(`Trip complete — ${usd(tripFare)} charged.`)
         setTimeout(() => setDemoNotification(null), 3500)
       }, 600)
     }
 
     return () => clearTimeout(t)
-  }, [currentTrip, tripStatus, tripProgress, acceptRide, startRide, completeRide])
+    // Deliberately keyed off the derived primitives (tripStatus/tripProgress/
+    // tripFare), not the raw `currentTrip` object — see the note on
+    // TripContext's action functions for why: currentTrip gets a new object
+    // identity on every progress tick, and including it here previously
+    // meant this effect tore down and rescheduled its own completion timer
+    // on every tick, so it could never survive long enough to fire.
+  }, [tripStatus, tripProgress, tripFare, acceptRide, startRide, completeRide])
 
   const finishCompleted = () => {
     triggerHaptic('success')

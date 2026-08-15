@@ -155,7 +155,7 @@ export default function HistoryModal({ isOpen, onClose }) {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-[#38BDF8]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8]">
                 <Clock size={20} />
               </span>
               <div>
@@ -179,8 +179,9 @@ export default function HistoryModal({ isOpen, onClose }) {
           <div className="mt-5 flex flex-1 flex-col gap-4 overflow-y-auto no-scrollbar">
             {tripHistory.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-10 text-center">
+                {/* No body copy here — the header subtitle already says
+                    "No past rides yet"; repeating it added nothing. */}
                 <Clock size={32} className="text-white/25" />
-                <p className="text-[13px] font-medium text-white/50">No past rides recorded yet.</p>
                 <button
                   onClick={onClose}
                   className="mt-1 rounded-xl border border-[#38BDF8]/40 bg-[#38BDF8]/10 px-4 py-2 text-[12px] font-bold text-[#38BDF8] active:scale-95"

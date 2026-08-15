@@ -194,7 +194,11 @@ export default function RideConfirmSheet({
           </span>
         </button>
 
-        {/* Live FairFare split gauge — always visible, not just on expand */}
+        {/* Live FairFare split gauge — always visible, not just on expand.
+            No text caption here on purpose: the header line above already
+            says "88% of your fare goes to your driver" — repeating it as
+            "88% Driver / 12% Platform" directly underneath was the same
+            fact twice in the same breath. The bar carries the visual. */}
         <div className="px-3.5 pb-2.5">
           <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/10">
             <motion.div
@@ -204,10 +208,6 @@ export default function RideConfirmSheet({
               className="h-full bg-gradient-to-r from-[#34D399] to-[#6EE7B7]"
             />
             <div className="h-full flex-1 bg-white/15" />
-          </div>
-          <div className="mt-1 flex justify-between text-[9px] font-bold uppercase tracking-wider">
-            <span className="text-[#34D399]">88% Driver</span>
-            <span className="text-white/40">12% Platform</span>
           </div>
         </div>
 

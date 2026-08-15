@@ -39,7 +39,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-[#38BDF8]/15 text-[#38BDF8]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8]">
                 <MessageSquare size={20} />
               </span>
               <div>

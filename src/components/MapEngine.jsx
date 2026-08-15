@@ -425,6 +425,10 @@ function MapEngineContent({
 
     const { lat: pLat, lng: pLng } = pickupCoords
     const { lat: dLat, lng: dLng } = dropoffCoords
+    // Clear the previous route's ETA immediately — otherwise the HUD keeps
+    // showing the old route's numbers for the moment it takes this fetch
+    // to resolve, which reads as a stale/wrong ETA rather than a loading one.
+    setRouteInfo(null)
     const controller = new AbortController()
     const url = `${OSRM_BASE}/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`
 

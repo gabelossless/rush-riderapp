@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, Clock, Loader2, MapPin, Navigation, Search, X } from 'lucide-react'
+import { ChevronLeft, Clock, Loader2, MapPin, Navigation, X } from 'lucide-react'
 import { PRESET_DESTINATIONS } from '../data/mockData'
 import { triggerHaptic } from '../utils/haptics'
 import { useAddressSearch } from '../utils/geocode'
@@ -137,7 +137,7 @@ export default function LocationSearch({
             <input
               type="text"
               value={pickup === 'Current Location' ? '' : pickup}
-              placeholder="Current Location — or type any address"
+              placeholder="Or type any address"
               onChange={handlePickup}
               onFocus={() => setPickupFocused(true)}
               onBlur={() => setTimeout(() => setPickupFocused(false), 120)}
@@ -151,7 +151,7 @@ export default function LocationSearch({
 
         {/* Pickup live address dropdown */}
         {showPickupDropdown && (
-          <div className="absolute inset-x-3 top-[52px] z-30 max-h-52 overflow-y-auto no-scrollbar rounded-2xl border border-white/15 bg-[#0A0D15] p-1.5 shadow-2xl shadow-black/80">
+          <div className="absolute inset-x-3 top-[64px] z-30 max-h-52 overflow-y-auto no-scrollbar rounded-2xl border border-white/15 bg-[#0A0D15] p-1.5 shadow-2xl shadow-black/80">
             <button
               onMouseDown={(e) => {
                 e.preventDefault()
@@ -252,30 +252,26 @@ export default function LocationSearch({
             )}
 
             <div>
-              <p className="mb-1 flex items-center gap-1.5 px-1 text-[10px] font-bold uppercase tracking-wider text-white/35">
+              <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wider text-white/35">
                 Any address
-                {geoLoading && <Loader2 size={10} className="animate-spin text-white/40" />}
               </p>
-              {geoResults.length > 0 ? (
-                <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-2">
-                  {geoResults.map((r) => (
-                    <Row key={r.id} dest={r} onClick={() => handleSelect(r)} />
-                  ))}
-                </div>
-              ) : (
-                !geoLoading &&
-                presetResults.length === 0 && (
-                  <div className="flex flex-col items-center gap-2 py-8 text-center">
-                    <Search size={20} className="text-white/25" />
-                    <p className="text-[12px] font-medium text-white/40">
-                      No matches for "{query}"
-                    </p>
-                    <p className="text-[10.5px] text-white/30">
-                      Try a full street address, or "Union Station", "Airport", "Red Rocks"
-                    </p>
+              <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-2">
+                {geoLoading && (
+                  <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] font-medium text-white/40">
+                    <Loader2 size={12} className="animate-spin" /> Searching addresses…
                   </div>
-                )
-              )}
+                )}
+                {geoResults.map((r) => (
+                  <Row key={r.id} dest={r} onClick={() => handleSelect(r)} />
+                ))}
+                {!geoLoading && geoResults.length === 0 && (
+                  <p className="px-2.5 py-2 text-[11px] font-medium text-white/35">
+                    {presetResults.length > 0
+                      ? 'No other address matches.'
+                      : `No address matches "${query}" yet — try a full street address.`}
+                  </p>
+                )}
+              </div>
             </div>
 
             {geoResults.length > 0 && (

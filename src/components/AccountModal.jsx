@@ -55,7 +55,7 @@ export default function AccountModal({ isOpen, onClose }) {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-[#38BDF8]">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8]">
                   <User size={20} />
                 </span>
                 <div>
