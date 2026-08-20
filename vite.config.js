@@ -8,6 +8,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.js'],
     globals: true,
+    // Vitest's default excludes don't cover .claude/ — without this, a
+    // `.claude/worktrees/<agent>/` scratch checkout (Claude Code's Agent
+    // tool with isolation: "worktree") gets recursed into and its copy of
+    // the whole test suite runs a second (or third...) time alongside the
+    // real one.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.{git,cache,output,temp}/**', '**/.claude/**'],
   },
   server: {
     // Bind to 0.0.0.0 (not just localhost) and accept any Host header so the

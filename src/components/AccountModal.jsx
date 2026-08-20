@@ -54,13 +54,21 @@ export default function AccountModal({ isOpen, onClose }) {
             className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-[#0F1420] p-6 text-white shadow-2xl shadow-black/50"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold tracking-wide text-white">Account</h2>
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8]">
+                  <User size={20} />
+                </span>
+                <div>
+                  <h2 className="text-lg font-extrabold tracking-wide text-white">Account</h2>
+                  <p className="text-[11px] font-medium text-white/50">Profile, role & session</p>
+                </div>
+              </div>
               <button
                 onClick={() => {
                   triggerHaptic('light')
                   onClose()
                 }}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 transition-colors hover:text-white"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 transition-colors hover:text-white"
               >
                 <X size={16} />
               </button>

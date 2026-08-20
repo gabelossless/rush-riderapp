@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { INITIAL_TRIP_HISTORY } from '../data/mockData'
 
 const TripContext = createContext(null)
@@ -44,6 +44,13 @@ export function TripProvider({ children }) {
     }
   })
 
+  // Always-current mirror of currentTrip, read by callbacks below that need
+  // to be referentially stable (useCallback(..., [])) without going stale.
+  // Plain assignment during render — no effect needed, see React's "latest
+  // ref" idiom.
+  const currentTripRef = useRef(currentTrip)
+  currentTripRef.current = currentTrip
+
   // Sync state across browser tabs/windows
   useEffect(() => {
     const handleStorageChange = (e) => {
@@ -84,86 +91,98 @@ export function TripProvider({ children }) {
     }
   }, [tripHistory])
 
-  const requestRide = ({ pickup, destination, tier, fare, eta, distance, riderName, pickupCoords, dropoffCoords }) => {
-    const newRequest = {
-      id: `req_${Date.now()}`,
-      status: 'SEARCHING', // SEARCHING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
-      pickup: pickup || 'Current Location',
-      destination: destination || 'Union Station',
-      pickupCoords: pickupCoords || null,
-      dropoffCoords: dropoffCoords || null,
-      tier: tier || 'Rush Express',
-      fare: fare || 24.90,
-      driverFare: (fare || 24.90) * 0.88,
-      eta: eta || '8 min',
-      distance: distance || '2.4 mi',
-      riderName: riderName || 'Alex Rivera',
-      createdAt: new Date().toISOString(),
-      progress: 0,
-      driver: null,
-    }
-    setCurrentTrip(newRequest)
-    return newRequest
-  }
+  // Every function below is wrapped in useCallback with an empty dep array
+  // so its identity never changes across renders. That's not just tidiness:
+  // consumers (App.jsx) put these in useEffect dependency arrays alongside
+  // currentTrip's own fields, and an unstable function reference there
+  // forces those effects to re-run on *every* render — which, for the
+  // auto-advance ride simulation, was cancelling and rescheduling its own
+  // "complete after 600ms" timer every ~80ms forever, so a trip could reach
+  // 100% progress and then simply never finish. None of these read
+  // `currentTrip` from closure anymore (that would go stale against a `[]`
+  // dep array) — they either use the functional setState form (reading
+  // `prev` directly) or, where a second piece of state also needs the
+  // trip's data (completeRide), read `currentTripRef.current`.
+  const requestRide = useCallback(
+    ({ pickup, destination, tier, fare, eta, distance, riderName, pickupCoords, dropoffCoords }) => {
+      const newRequest = {
+        id: `req_${Date.now()}`,
+        status: 'SEARCHING', // SEARCHING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
+        pickup: pickup || 'Current Location',
+        destination: destination || 'Union Station',
+        pickupCoords: pickupCoords || null,
+        dropoffCoords: dropoffCoords || null,
+        tier: tier || 'Rush Express',
+        fare: fare || 24.90,
+        driverFare: (fare || 24.90) * 0.88,
+        eta: eta || '8 min',
+        distance: distance || '2.4 mi',
+        riderName: riderName || 'Alex Rivera',
+        createdAt: new Date().toISOString(),
+        progress: 0,
+        driver: null,
+      }
+      setCurrentTrip(newRequest)
+      return newRequest
+    },
+    []
+  )
 
-  const cancelRequest = () => {
-    if (currentTrip) {
-      setCurrentTrip(null)
-    }
-  }
+  const cancelRequest = useCallback(() => {
+    setCurrentTrip((prev) => (prev ? null : prev))
+  }, [])
 
-  const resetTripState = () => {
+  const resetTripState = useCallback(() => {
     setCurrentTrip(null)
-  }
+  }, [])
 
-  const acceptRide = (driverInfo) => {
-    if (!currentTrip) return
-    setCurrentTrip((prev) => ({
-      ...prev,
-      status: 'ACCEPTED',
-      driver: driverInfo || {
-        name: 'Marcus Vance',
-        car: 'Tesla Model Y — Matte Black',
-        plate: 'RUSH-88',
-        rating: 4.98,
-        initials: 'MV',
-      },
-    }))
-  }
+  const acceptRide = useCallback((driverInfo) => {
+    setCurrentTrip((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: 'ACCEPTED',
+            driver: driverInfo || {
+              name: 'Marcus Vance',
+              car: 'Tesla Model Y — Matte Black',
+              plate: 'RUSH-88',
+              rating: 4.98,
+              initials: 'MV',
+            },
+          }
+        : prev
+    )
+  }, [])
 
-  const startRide = () => {
-    if (!currentTrip) return
-    setCurrentTrip((prev) => ({
-      ...prev,
-      status: 'IN_PROGRESS',
-      progress: 0.1,
-    }))
-  }
+  const startRide = useCallback(() => {
+    setCurrentTrip((prev) => (prev ? { ...prev, status: 'IN_PROGRESS', progress: 0.1 } : prev))
+  }, [])
 
-  const updateProgress = (progress) => {
+  const updateProgress = useCallback((progress) => {
     setCurrentTrip((prev) => (prev ? { ...prev, progress } : null))
-  }
+  }, [])
 
-  const completeRide = () => {
-    if (!currentTrip) return
+  const completeRide = useCallback(() => {
+    const trip = currentTripRef.current
+    if (!trip) return undefined
 
     const completedEntry = {
-      id: currentTrip.id || `trip_${Date.now()}`,
+      id: trip.id || `trip_${Date.now()}`,
       date: new Date().toISOString(),
-      pickup: currentTrip.pickup,
-      destination: currentTrip.destination,
-      tier: currentTrip.tier,
-      fare: currentTrip.fare,
+      pickup: trip.pickup,
+      destination: trip.destination,
+      tier: trip.tier,
+      fare: trip.fare,
       status: 'Completed',
-      driverName: currentTrip.driver?.name || 'Marcus Vance',
-      car: currentTrip.driver?.car || 'Tesla Model Y — Matte Black',
+      driverName: trip.driver?.name || 'Marcus Vance',
+      car: trip.driver?.car || 'Tesla Model Y — Matte Black',
       rating: 5,
     }
 
     setTripHistory((prev) => [completedEntry, ...prev])
     setCurrentTrip(null)
     return completedEntry
-  }
+  }, [])
 
   return (
     <TripContext.Provider

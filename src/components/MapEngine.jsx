@@ -93,6 +93,48 @@ function makeMarkerEl(innerHtml, className) {
   return el
 }
 
+// Compass bearing (0=N, clockwise) between two [lng,lat] points — small-
+// scale approximation, fine at city distances.
+function bearingDeg(a, b) {
+  if (!a || !b) return null
+  const dLng = b[0] - a[0]
+  const dLat = b[1] - a[1]
+  if (!dLng && !dLat) return null
+  return ((Math.atan2(dLng, dLat) * 180) / Math.PI + 360) % 360
+}
+
+// Small canvas-drawn directional arrow, reused for both the trip car and
+// the live fleet — avoids pulling in an external icon asset.
+function createArrowIconData(size, color) {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  ctx.translate(size / 2, size / 2)
+  ctx.beginPath()
+  ctx.moveTo(0, -size * 0.42)
+  ctx.lineTo(size * 0.32, size * 0.34)
+  ctx.lineTo(0, size * 0.18)
+  ctx.lineTo(-size * 0.32, size * 0.34)
+  ctx.closePath()
+  ctx.fillStyle = color
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'
+  ctx.lineWidth = size * 0.05
+  ctx.stroke()
+  return ctx.getImageData(0, 0, size, size)
+}
+
+function formatEtaMinutes(durationS, progress) {
+  const remaining = durationS * (1 - clamp01(progress))
+  return Math.max(1, Math.round(remaining / 60))
+}
+
+function formatRemainingMiles(distanceM, progress) {
+  const remaining = distanceM * (1 - clamp01(progress))
+  return (remaining / 1609.34).toFixed(1)
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main map component                                                 */
 /* ------------------------------------------------------------------ */
@@ -110,6 +152,7 @@ function MapEngineContent({
   const [mapState, setMapState] = useState('loading') // loading | ready | error
   const [showFocusDenver, setShowFocusDenver] = useState(false)
   const [routeVersion, setRouteVersion] = useState(0)
+  const [routeInfo, setRouteInfo] = useState(null) // { distanceM, durationS } from OSRM
 
   const routeGeoRef = useRef(null)
   const routeCumRef = useRef(null)
@@ -147,7 +190,7 @@ function MapEngineContent({
       return
     }
 
-    map.addControl(new NavigationControl({ showCompass: false }), 'top-left')
+    map.addControl(new NavigationControl({ showCompass: true, visualizePitch: true }), 'top-left')
     map.addControl(
       new AttributionControl({ compact: true }),
       'bottom-right'
@@ -190,19 +233,53 @@ function MapEngineContent({
         },
       })
 
-      // Phase 2 — live fleet layer
+      // Phase 2 — live fleet layer. Symbol layer with a rotated arrow icon
+      // (rather than plain dots) so the fleet visibly has real headings.
+      map.addImage('rush-fleet-arrow', createArrowIconData(48, '#38BDF8'), { pixelRatio: 2 })
       map.addSource('fleet', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       map.addLayer({
         id: 'fleet',
-        type: 'circle',
+        type: 'symbol',
         source: 'fleet',
+        layout: {
+          'icon-image': 'rush-fleet-arrow',
+          'icon-size': 0.5,
+          'icon-rotate': ['get', 'heading'],
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
         paint: {
-          'circle-radius': 3.5,
-          'circle-color': '#38BDF8',
-          'circle-opacity': 0.55,
-          'circle-blur': 0.15,
+          'icon-opacity': 0.8,
         },
       })
+
+      // Real building massing where the vendor tiles carry it — a subtle
+      // dusk-lit skyline that appears as the driving view tilts/zooms in.
+      try {
+        const style = map.getStyle()
+        const vectorSourceId = Object.keys(style.sources || {}).find(
+          (id) => style.sources[id].type === 'vector'
+        )
+        const hasBuildingLayer = (style.layers || []).some((l) => l['source-layer'] === 'building')
+        if (vectorSourceId && hasBuildingLayer) {
+          map.addLayer({
+            id: 'rush-3d-buildings',
+            type: 'fill-extrusion',
+            source: vectorSourceId,
+            'source-layer': 'building',
+            minzoom: 13,
+            paint: {
+              'fill-extrusion-color': '#1B2438',
+              'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 8],
+              'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+              'fill-extrusion-opacity': 0.78,
+            },
+          })
+        }
+      } catch (err) {
+        console.warn('3D buildings unavailable for this map style:', err)
+      }
 
       // Pickup / dropoff / car DOM markers
       pickupMarkerRef.current = new Marker({
@@ -217,7 +294,8 @@ function MapEngineContent({
       }).setLngLat([DENVER_CENTER.lng, DENVER_CENTER.lat]).addTo(map)
 
       carMarkerRef.current = new Marker({
-        element: makeMarkerEl('<span class="rush-car-dot"></span>', 'rush-car'),
+        element: makeMarkerEl('<span class="rush-car-arrow"></span>', 'rush-car'),
+        rotationAlignment: 'map',
       }).setLngLat([DENVER_CENTER.lng, DENVER_CENTER.lat]).addTo(map)
 
       // Surge zones — pulsing warm rings (Phase 2)
@@ -341,11 +419,16 @@ function MapEngineContent({
       routeGeoRef.current = null
       routeCumRef.current = null
       setRouteVersion((v) => v + 1)
+      setRouteInfo(null)
       return
     }
 
     const { lat: pLat, lng: pLng } = pickupCoords
     const { lat: dLat, lng: dLng } = dropoffCoords
+    // Clear the previous route's ETA immediately — otherwise the HUD keeps
+    // showing the old route's numbers for the moment it takes this fetch
+    // to resolve, which reads as a stale/wrong ETA rather than a loading one.
+    setRouteInfo(null)
     const controller = new AbortController()
     const url = `${OSRM_BASE}/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`
 
@@ -358,12 +441,17 @@ function MapEngineContent({
         routeGeoRef.current = geometry
         routeCumRef.current = cumulativeDistances(geometry.coordinates)
         map.getSource('route')?.setData({ type: 'Feature', geometry, properties: {} })
+        setRouteInfo({
+          distanceM: data.routes[0].distance,
+          durationS: data.routes[0].duration,
+        })
 
-        // Fit the route into view
+        // Fit the route into view — capped at 14 so short hops (e.g. a
+        // few blocks) zoom in close enough for the 3D building layer to
+        // render, while long cross-metro routes still zoom out to fit.
         const bounds = new LngLatBounds()
         geometry.coordinates.forEach((c) => bounds.extend(c))
-        .zoom(12.5, { duration: 900 })
-        .fitBounds(bounds, { padding: 70, duration: 900, maxZoom: 12.5 })
+        map.fitBounds(bounds, { padding: 70, duration: 900, maxZoom: 14 })
         setRouteVersion((v) => v + 1)
       })
       .catch((err) => {
@@ -395,12 +483,23 @@ function MapEngineContent({
     const coords = routeGeoRef.current.coordinates
     const cum = routeCumRef.current
     const pt = pointAtFraction(coords, cum, carProgress)
+    const aheadPt = pointAtFraction(coords, cum, clamp01(carProgress + 0.01))
     const carEl = carMarkerRef.current?.getElement()
     if (pt) {
       carMarkerRef.current?.setLngLat(pt)
       if (carEl) carEl.style.display = 'block'
+      const heading = bearingDeg(pt, aheadPt)
+      if (heading !== null) carMarkerRef.current?.setRotation(heading)
     }
   }, [map, mapState, carProgress, routeVersion, showRoute]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- Cinematic tilt while a trip is actively driving ---------- */
+  const isDriving = showRoute && carProgress > 0.001
+  useEffect(() => {
+    if (!map || mapState !== 'ready') return
+    const targetPitch = isDriving ? 52 : showRoute ? 28 : 0
+    map.easeTo({ pitch: targetPitch, duration: 1000 })
+  }, [map, mapState, isDriving, showRoute])
 
   /* ---------- Radar pulse while searching ---------- */
   useEffect(() => {
@@ -436,7 +535,9 @@ function MapEngineContent({
       features: cars.map((c) => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
-        properties: {},
+        // heading (math radians, 0=east/CCW) -> compass bearing (0=N, CW)
+        // for icon-rotate.
+        properties: { heading: ((90 - (c.heading * 180) / Math.PI) % 360 + 360) % 360 },
       })),
     })
 
@@ -532,6 +633,18 @@ function MapEngineContent({
       {mapState === 'ready' && (
         <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-xl border border-[#34D399]/30 bg-black/75 px-3 py-1.5 text-[11px] font-bold text-[#34D399]">
           <LocateFixed size={14} /> Live Denver Map • Human Fleet Active
+        </div>
+      )}
+
+      {/* Live ETA / distance-remaining HUD — driven by the real OSRM route */}
+      {mapState === 'ready' && showRoute && routeInfo && (
+        <div className="pointer-events-none absolute top-3 right-3 z-20 flex flex-col items-end gap-0.5 rounded-2xl border border-[#38BDF8]/30 bg-black/75 px-3 py-2 text-right shadow-lg backdrop-blur-md">
+          <span className="text-[16px] font-black leading-none text-white">
+            {formatEtaMinutes(routeInfo.durationS, carProgress)} min
+          </span>
+          <span className="text-[9.5px] font-semibold leading-none text-white/50">
+            {formatRemainingMiles(routeInfo.distanceM, carProgress)} mi remaining
+          </span>
         </div>
       )}
 

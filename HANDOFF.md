@@ -84,6 +84,100 @@ See `git log` for the full commit-by-commit history.
    (`sessionStorage` flag keyed by user id, [App.jsx](src/App.jsx)), and added
    4 new `switchRole` tests.
 
+### Latest session — map visuals, real addresses, driver nav handoff
+
+9. **Map visuals** ([MapEngine.jsx](src/components/MapEngine.jsx)):
+   the live fleet switched from plain circle dots to a symbol layer using a
+   canvas-drawn arrow icon rotated to each car's real heading
+   (`icon-rotate`); the trip car marker now uses MapLibre's built-in
+   `Marker.setRotation()` (via `rotationAlignment: 'map'`) to face the
+   direction of travel along the OSRM route; a 3D building `fill-extrusion`
+   layer is added dynamically (only if the loaded style actually ships a
+   `building` source-layer, so it degrades safely on any tile host); the
+   map eases into a ~52° driving-perspective tilt once a trip is in
+   progress (flat top-down otherwise); and a live ETA/distance-remaining
+   HUD renders from the OSRM response's `duration`/`distance`, counting
+   down as `carProgress` advances. Along the way, found and fixed a
+   pre-existing bug in the route-fit code: `geometry.coordinates.forEach(...)
+   .zoom(...).fitBounds(...)` was invalid chaining (`forEach` returns
+   `undefined`) that threw on every successful route fetch and was silently
+   swallowed by the `.catch()` — meaning `fitBounds` never actually ran and,
+   more importantly, `setRouteVersion()` (right after it) never fired, so
+   the car-animation effect's re-run trigger from the HANDOFF #3 fix was
+   itself dead code. Fixed by splitting into separate statements.
+10. **Real address geocoding** ([geocode.js](src/utils/geocode.js),
+    [LocationSearch.jsx](src/components/LocationSearch.jsx)): pickup and
+    destination both now support live free-text address search via
+    OpenStreetMap Nominatim (free, no API key — same philosophy as the
+    OpenFreeMap tiles / OSRM routing already in use), debounced 450ms with
+    in-flight request cancellation (`useAddressSearch` hook). Destination
+    search shows matching Rush presets plus live "any address" geocode
+    results; selecting a geocoded destination with no preset `distance`
+    field gets one estimated via straight-line `haversineMiles()` from
+    pickup so the existing fare calc still has something to work with.
+    Pickup gets its own autocomplete dropdown (plus a "Use current GPS
+    location" quick action) that updates real `pickupCoords`, not just the
+    display string — previously typing a custom pickup address left
+    `pickupCoords` stale at the hardcoded default.
+11. **Driver navigation handoff** ([navLinks.js](src/utils/navLinks.js),
+    `DriverViewContent` in [App.jsx](src/App.jsx)): the driver's active-trip
+    card now has "Google Maps" / "Waze" deep-link buttons targeting the
+    current leg's real coordinates (pickup while `ACCEPTED`, dropoff while
+    `IN_PROGRESS`) — Rush shows the address, the driver's own phone app does
+    the actual turn-by-turn.
+12. **Ride-flow visual polish**: `RideConfirmSheet` now renders an always-
+    visible animated 88/12 FairFare split gauge (previously only numbers in
+    a collapsed panel, despite the README claiming a "live visual fee split
+    bar"); the searching screen shows a "pinging nearby drivers" pulse
+    animation; the completed screen bursts a small confetti animation from
+    the success checkmark on mount.
+
+**Verification caveat for the next agent**: same as the prior session — this
+sandbox's network policy blocks `tiles.openfreemap.org`,
+`router.project-osrm.org`, *and* `nominatim.openstreetmap.org`, so the new
+geocoding, 3D buildings, car rotation, and ETA HUD were verified by reading
+MapLibre's API/style spec and Nominatim's response shape, not by watching
+them render live. Worth a manual check on a real device/network: type a
+non-preset street address into pickup and destination and confirm results
+appear and the fare/route use the real coordinates; confirm the fleet arrows
+visibly rotate as they roam; confirm the map tilts when a trip goes
+`IN_PROGRESS`; and confirm the Google Maps/Waze buttons open with the
+correct coordinates on a phone.
+
+### Latest session — Trip History redesign + investor-demo UI polish
+
+13. **`HistoryModal.jsx` rewritten.** The `date` field on every trip record
+    was already there and was never rendered anywhere — a "history" screen
+    with no dates on it. Now: trips are grouped under day headers
+    (Today/Yesterday/`Aug 4`), each row shows its time, the header subtitle
+    computes a real summary (`N rides · $X spent/earned`, role-aware via
+    `useAuth`), and tapping a row expands the same driver/platform FairFare
+    receipt breakdown used on the completed-ride screen — reusing that
+    visual language instead of inventing a new one. Dropped the per-row
+    "Completed ✓" badge: every trip in this data model is terminally
+    `Completed` (`cancelRequest()` never appends to `tripHistory`), so it
+    was 100% noise repeated on every card; the freed space went to the time,
+    which is actually informative. Empty state now has a working "Book your
+    first ride" button (`onClose()`) instead of being a dead end. Scroll
+    container switched from a hardcoded `max-h-[400px]` + native scrollbar
+    to viewport-relative (`85dvh`) + `no-scrollbar`, matching every other
+    sheet in the app.
+14. **`WalletModal.jsx` — fixed fake "Recent Activity."** It was two
+    hardcoded rows ("+$50.00 Test Fund Deposit", "-$24.90 Rush Express
+    Ride") that never changed no matter what the person testing the demo
+    actually did — click "+$50" twice in front of an investor and the
+    ledger visibly doesn't move. Replaced with a real feed merging actual
+    `tripHistory` (fare debit for riders / 88% payout credit for drivers)
+    with an in-session list of demo deposits, sorted by timestamp, capped
+    at 5, with a proper empty state.
+15. **`AccountModal.jsx` header** brought in line with the other three
+    modals (Wallet/History/Feedback all use an icon badge + title +
+    subtitle header; Account was plain text with no icon) — consistency
+    across the four sheets instead of one being visibly different.
+16. **`FeedbackModal.jsx`** — unselected category buttons were
+    `text-white/40` on `bg-white/[0.03]`, low enough contrast to hurt
+    readability; bumped to `/55`.
+
 ---
 
 ## 🧩 Current Architecture
@@ -198,8 +292,10 @@ spans and call methods through the ref.
 - Dev server: `npm run dev`
 - Build: `npm run build`
 - Preview production build: `npm run preview`
-- Test: `npm test -- --run` (40 tests, 5 files, all passing as of this
-  session)
+- Test: `npm test -- --run` (47 tests, 5 files, all passing as of this
+  session — `geocode.js`/`navLinks.js` are network-dependent utilities in
+  the same category as `MapEngine.jsx`, not unit-tested; see the map
+  engine note above)
 - Lint: `npm run lint` (0 errors, 2 pre-existing warnings — both
   `react(only-export-components)` in `AuthContext.jsx` / `TripContext.jsx`,
   harmless, about Fast Refresh not full lint failures)

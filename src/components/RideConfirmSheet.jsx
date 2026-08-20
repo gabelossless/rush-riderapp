@@ -118,7 +118,17 @@ export default function RideConfirmSheet({
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[19px] font-black text-white">{usd(totalFare)}</p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={tier.id}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className="text-[19px] font-black text-white"
+              >
+                {usd(totalFare)}
+              </motion.p>
+            </AnimatePresence>
             <p className="flex items-center justify-end gap-0.5 text-[9.5px] font-semibold text-[#38BDF8]">
               Change {showTiers ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
             </p>
@@ -183,6 +193,24 @@ export default function RideConfirmSheet({
             {showFairFare ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </span>
         </button>
+
+        {/* Live FairFare split gauge — always visible, not just on expand.
+            No text caption here on purpose: the header line above already
+            says "88% of your fare goes to your driver" — repeating it as
+            "88% Driver / 12% Platform" directly underneath was the same
+            fact twice in the same breath. The bar carries the visual. */}
+        <div className="px-3.5 pb-2.5">
+          <div className="flex h-2 w-full overflow-hidden rounded-full bg-white/10">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: '88%' }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+              className="h-full bg-gradient-to-r from-[#34D399] to-[#6EE7B7]"
+            />
+            <div className="h-full flex-1 bg-white/15" />
+          </div>
+        </div>
+
         <AnimatePresence>
           {showFairFare && (
             <motion.div

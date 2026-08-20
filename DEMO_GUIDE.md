@@ -64,11 +64,17 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 
 * **Real vector map**: MapLibre GL + OpenFreeMap dark style — a real map of **Denver & Colorado**, free forever, no API key.
 * **GPS boot**: on app entry the map flies to your actual location. If GPS is denied, it reveals **all of Colorado** with a **"Focus Denver"** pill to zoom back in.
-* **Live fleet (40+ cars)**: simulated Rush drivers roam the metro continuously — the map feels alive.
+* **Live fleet (40+ cars)**: simulated Rush drivers roam the metro continuously, rendered as directional arrows rotated to their real heading — the map feels alive.
 * **Surge zones**: six pulsing warm anchors (DIA, Union Station, Coors Field, Red Rocks, 16th St Mall, Cherry Creek).
-* **Real driving routes**: pickup → destination is routed through the public OSRM engine (Union Station → DIA is a real ~42 km drive), with the car animating along actual roads.
+* **Real driving routes**: pickup → destination is routed through the public OSRM engine (Union Station → DIA is a real ~42 km drive), with the car animating along actual roads, rotating to face its direction of travel, and a live ETA/distance-remaining HUD ticking down as the trip progresses.
+* **Cinematic tilt + 3D buildings**: the map eases into a driving-perspective tilt once a trip is in progress, and renders real building extrusions where the vendor tiles include them (try zooming into a short trip, e.g. Home → Work).
+* **Type any address**: pickup and destination search live-geocode free-text addresses via OpenStreetMap Nominatim — not limited to the Denver preset list.
 * **Tap to pin**: tap anywhere on the map to set a custom pickup ("Pinned location").
 * **Offline fallback**: if WebGL/network is unavailable, the app auto-switches to a simplified Denver grid engine.
+
+## 🧭 5b. Driver Navigation Handoff
+
+* Once a driver accepts a ride, the active-trip card shows **"Google Maps"** and **"Waze"** buttons that deep-link into the driver's own installed app with the real pickup coordinates — then automatically switch to the dropoff coordinates once the ride starts. Rush shows the address; the driver's own phone does the actual turn-by-turn.
 
 ---
 

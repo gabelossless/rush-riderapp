@@ -7,8 +7,10 @@ import {
   CircleCheck,
   Clock,
   Home,
+  MapPin,
   MessageSquare,
   Navigation,
+  Navigation2,
   Radio,
   Search,
   ShieldCheck,
@@ -32,9 +34,12 @@ import RideConfirmSheet from './components/RideConfirmSheet'
 import HeroMoment from './components/HeroMoment'
 import { PREFERENCES, RIDE_TIERS, PRESET_DESTINATIONS, SAVED_PLACES } from './data/mockData'
 import { triggerHaptic } from './utils/haptics'
+import { haversineMiles } from './utils/geocode'
+import { googleMapsUrl, wazeUrl } from './utils/navLinks'
 
 const usd = (n) => `$${(n || 0).toFixed(2)}`
 const DRIVER_PCT = 0.88
+const DEFAULT_PICKUP_COORDS = { lat: 39.7526, lng: -105.0047 }
 const DEMO_DRIVER = {
   name: 'Marcus Vance',
   car: 'Tesla Model Y — Matte Black',
@@ -197,7 +202,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const [destination, setDestination] = useState(null)
   const [selectedTier, setSelectedTier] = useState('standard')
   const [stage, setStage] = useState('home') // home | dest | confirm | searching | matched | completed
-  const [pickupCoords, setPickupCoords] = useState({ lat: 39.7526, lng: -105.0047 })
+  const [pickupCoords, setPickupCoords] = useState(DEFAULT_PICKUP_COORDS)
   const [dropoffCoords, setDropoffCoords] = useState({ lat: 39.7539, lng: -105.0002 })
   const [demoNotification, setDemoNotification] = useState(null)
   const [searchNote, setSearchNote] = useState(false)
@@ -206,7 +211,14 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const [lastCompleted, setLastCompleted] = useState(null)
 
   const currentTierObj = RIDE_TIERS.find((t) => t.id === selectedTier) || RIDE_TIERS[0]
-  const basePrice = destination?.distance ? parseFloat(destination.distance) * 2.2 + 10 : 22.5
+  // Prefer the numeric distanceMiles a geocoded destination carries (see
+  // handleSelectDestination) over parsing the display string — that string
+  // is prefixed "~" for estimated addresses, which parseFloat can't read
+  // (parseFloat('~3.2 mi') is NaN, silently corrupting every fare/wallet
+  // calculation downstream). Number.isFinite guards every path so basePrice
+  // can never itself become NaN.
+  const estimatedMiles = destination?.distanceMiles ?? parseFloat(destination?.distance)
+  const basePrice = Number.isFinite(estimatedMiles) ? estimatedMiles * 2.2 + 10 : 22.5
   const totalFare = Math.round(basePrice * currentTierObj.multiplier * 100) / 100
 
   const recents = useMemo(() => {
@@ -279,9 +291,33 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
   const handleSelectDestination = (dest) => {
     triggerHaptic('light')
-    setDestination(dest)
-    if (dest.latlng) setDropoffCoords(dest.latlng)
+    // Custom geocoded addresses (typed by the user) don't carry a preset
+    // `distance` string — estimate one (straight-line, from pickup) so the
+    // fare calc below has something to work with, same as preset places.
+    let d = dest
+    if (!d.distance && d.latlng) {
+      const miles = haversineMiles(pickupCoords, d.latlng)
+      // distanceMiles is the numeric value the fare calc actually uses;
+      // `distance` stays a display-only string (its "~" prefix isn't
+      // parseFloat-safe, see basePrice above).
+      if (miles != null) d = { ...d, distance: `~${miles.toFixed(1)} mi`, distanceMiles: miles }
+    }
+    setDestination(d)
+    if (d.latlng) setDropoffCoords(d.latlng)
     setStage('confirm')
+  }
+
+  // Typing/selecting a real address for pickup — updates both the display
+  // string and the actual coordinates the map/driver rely on.
+  const handlePickupSelect = (place) => {
+    triggerHaptic('light')
+    setPickup(place.name)
+    if (place.latlng) setPickupCoords(place.latlng)
+  }
+
+  const handlePickupChange = (value) => {
+    setPickup(value)
+    if (value === 'Current Location') setPickupCoords(DEFAULT_PICKUP_COORDS)
   }
 
   const handleRequestRide = () => {
@@ -310,8 +346,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   //   SEARCHING → ACCEPTED (driver matches) → IN_PROGRESS (en route → pickup → ride) → COMPLETED
   const tripStatus = currentTrip?.status
   const tripProgress = currentTrip?.progress || 0
+  const tripFare = currentTrip?.fare
   useEffect(() => {
-    if (!currentTrip) return
+    if (!tripStatus) return
     let t
 
     if (tripStatus === 'SEARCHING') {
@@ -330,13 +367,19 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
       // Auto-complete once the car animation reaches the destination.
       t = setTimeout(() => {
         completeRide()
-        setDemoNotification(`Trip complete — ${usd(currentTrip.fare)} charged.`)
+        setDemoNotification(`Trip complete — ${usd(tripFare)} charged.`)
         setTimeout(() => setDemoNotification(null), 3500)
       }, 600)
     }
 
     return () => clearTimeout(t)
-  }, [currentTrip, tripStatus, tripProgress, acceptRide, startRide, completeRide])
+    // Deliberately keyed off the derived primitives (tripStatus/tripProgress/
+    // tripFare), not the raw `currentTrip` object — see the note on
+    // TripContext's action functions for why: currentTrip gets a new object
+    // identity on every progress tick, and including it here previously
+    // meant this effect tore down and rescheduled its own completion timer
+    // on every tick, so it could never survive long enough to fire.
+  }, [tripStatus, tripProgress, tripFare, acceptRide, startRide, completeRide])
 
   const finishCompleted = () => {
     triggerHaptic('success')
@@ -462,7 +505,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             <div className="glass max-h-[78dvh] w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
               <LocationSearch
                 pickup={pickup}
-                onPickupChange={setPickup}
+                onPickupChange={handlePickupChange}
+                onPickupSelect={handlePickupSelect}
                 destination={destination}
                 onSelectDestination={handleSelectDestination}
                 onBack={() => setStage('home')}
@@ -518,6 +562,20 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                   ? 'Still searching — expanding to nearby neighborhoods. Typically adds 3–6 min in Denver.'
                   : 'Usually takes 2–4 minutes in your area.'}
               </p>
+
+              <div className="mt-4 flex items-center gap-2">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.9, 1, 0.9] }}
+                    transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.25, ease: 'easeInOut' }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[#38BDF8]/30 bg-[#38BDF8]/10 text-[#38BDF8]"
+                  >
+                    <Car size={14} />
+                  </motion.div>
+                ))}
+                <span className="text-[10px] font-semibold text-white/40">Pinging nearby drivers…</span>
+              </div>
 
               <button
                 onClick={() => {
@@ -653,7 +711,19 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             className="absolute inset-0 z-20 flex items-center justify-center p-4 bg-void/80 backdrop-blur-sm"
           >
             <div className="glass-strong flex max-h-full w-full max-w-[320px] flex-col overflow-y-auto no-scrollbar rounded-3xl border border-[#34D399]/30 p-6 shadow-2xl text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#34D399]/20 text-[#34D399] mb-4">
+              <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#34D399]/20 text-[#34D399]">
+                {Array.from({ length: 8 }).map((_, i) => {
+                  const angle = (i / 8) * Math.PI * 2
+                  return (
+                    <motion.span
+                      key={i}
+                      initial={{ x: 0, y: 0, opacity: 1 }}
+                      animate={{ x: Math.cos(angle) * 40, y: Math.sin(angle) * 40, opacity: 0 }}
+                      transition={{ duration: 0.7, ease: 'easeOut' }}
+                      className="absolute h-1.5 w-1.5 rounded-full bg-[#34D399]"
+                    />
+                  )
+                })}
                 <Check size={32} />
               </div>
               <h2 className="text-xl font-black text-white">Trip Completed</h2>
@@ -901,10 +971,48 @@ function DriverViewContent({ onImmersiveChange }) {
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#38BDF8]">
               {currentTrip.status === 'ACCEPTED' ? 'En Route to Pickup' : 'Driving to Dropoff'}
             </p>
-            <p className="truncate text-[14px] font-extrabold text-white">{currentTrip.destination}</p>
+            <p className="truncate text-[14px] font-extrabold text-white">
+              {currentTrip.status === 'ACCEPTED' ? currentTrip.pickup : currentTrip.destination}
+            </p>
             <p className="text-[11px] font-medium text-[#34D399]">
               Net Payout: {usd(currentTrip.driverFare || currentTrip.fare * 0.88)} (88%)
             </p>
+
+            {/* Hand off turn-by-turn to the driver's own phone — Rush shows
+                the address, Google Maps/Waze does the actual navigating. */}
+            <div className="mt-3">
+              <p className="mb-1.5 text-[9.5px] font-bold uppercase tracking-wider text-white/35">
+                Navigate with your own app
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={googleMapsUrl(
+                    currentTrip.status === 'ACCEPTED'
+                      ? currentTrip.pickupCoords || SAVED_PLACES[0].latlng
+                      : currentTrip.dropoffCoords || PRESET_DESTINATIONS[0].latlng
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => triggerHaptic('light')}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.05] py-2.5 text-[12px] font-bold text-white/80 transition-colors hover:text-white active:scale-95"
+                >
+                  <MapPin size={14} className="text-[#38BDF8]" /> Google Maps
+                </a>
+                <a
+                  href={wazeUrl(
+                    currentTrip.status === 'ACCEPTED'
+                      ? currentTrip.pickupCoords || SAVED_PLACES[0].latlng
+                      : currentTrip.dropoffCoords || PRESET_DESTINATIONS[0].latlng
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => triggerHaptic('light')}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.05] py-2.5 text-[12px] font-bold text-white/80 transition-colors hover:text-white active:scale-95"
+                >
+                  <Navigation2 size={14} className="text-[#38BDF8]" /> Waze
+                </a>
+              </div>
+            </div>
 
             {currentTrip.status === 'ACCEPTED' ? (
               <button

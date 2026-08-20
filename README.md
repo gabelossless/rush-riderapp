@@ -27,9 +27,14 @@ Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultr
 ### 🗺️ 3. Real Denver Map with Live Fleet
 * **MapLibre GL + OpenFreeMap**: real vector map of **Denver & Colorado** in a dark style — free forever, no API key required.
 * **GPS Boot**: flies to your actual location on entry; if GPS is denied, reveals all of Colorado with a **"Focus Denver"** pill to zoom back in.
-* **Live Fleet (40+ cars)**: simulated Rush drivers roam the metro continuously; **surge zones** pulse at six anchors (DIA, Union Station, Coors Field, Red Rocks, 16th St Mall, Cherry Creek).
-* **Real Driving Routes**: pickup → destination routed through the public OSRM engine with the car animating along actual roads.
+* **Live Fleet (40+ cars)**: simulated Rush drivers roam the metro continuously, each rendered as a directional arrow rotated to its real heading; **surge zones** pulse at six anchors (DIA, Union Station, Coors Field, Red Rocks, 16th St Mall, Cherry Creek).
+* **Real Driving Routes**: pickup → destination routed through the public OSRM engine, with the car animating along actual roads and rotating to face the direction of travel.
+* **Cinematic 3D**: the view tilts to a driving perspective mid-trip and renders real building massing (3D extrusions) where the vendor tiles carry it; a live ETA/distance-remaining HUD tracks the OSRM route as the trip progresses.
+* **Any Address, Not Just Presets**: pickup and destination both support live free-text address search (OpenStreetMap Nominatim geocoding, no API key) on top of the curated Denver preset list.
 * **Automatic Fallback**: if WebGL/network is unavailable, the app auto-switches to a simplified Denver grid engine — never a blank screen.
+
+### 🧭 3b. Driver Navigation Handoff
+Rush doesn't reinvent turn-by-turn — it hands off to what drivers already trust. The active-trip card gives drivers one-tap **"Google Maps"** / **"Waze"** buttons that deep-link straight into their own phone's app with the real pickup or dropoff coordinates, switching automatically as the trip moves from "en route to pickup" to "driving to dropoff."
 
 ### 📱 4. Native-Grade Mobile PWA UX
 * **Tactile Haptic Vibrations**: Haptic feedback (`navigator.vibrate`) on tab switches, ride option selection, preset taps, and wallet transactions.
@@ -45,7 +50,7 @@ Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultr
 * **Styling**: Vanilla CSS + TailwindCSS 3.4
 * **Animations**: Framer Motion 13
 * **Icons**: Lucide React Icons
-* **Mapping**: MapLibre GL 6 + OpenFreeMap (tiles) + OSRM (routing)
+* **Mapping**: MapLibre GL 6 + OpenFreeMap (tiles) + OSRM (routing) + Nominatim (address geocoding)
 * **PWA Engine**: `vite-plugin-pwa` + Workbox
 * **Linter**: Oxlint
 

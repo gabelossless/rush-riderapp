@@ -25,3 +25,7 @@ dist-ssr
 
 .vercel
 .env*
+
+# Local agent scratch worktrees (created by Claude Code's Agent tool with
+# isolation: "worktree") — ephemeral tooling state, never project source.
+.claude/worktrees/
