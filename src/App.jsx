@@ -4,6 +4,8 @@ import {
   ArrowRight,
   Car,
   Check,
+  ChevronDown,
+  ChevronUp,
   CircleCheck,
   Clock,
   Home,
@@ -40,6 +42,17 @@ import { googleMapsUrl, wazeUrl } from './utils/navLinks'
 const usd = (n) => `$${(n || 0).toFixed(2)}`
 const DRIVER_PCT = 0.88
 const DEFAULT_PICKUP_COORDS = { lat: 39.7526, lng: -105.0047 }
+const initialsOf = (name) =>
+  (name || 'US')
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+const weekdayOf = (iso) => {
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { weekday: 'long' })
+}
 const DEMO_DRIVER = {
   name: 'Marcus Vance',
   car: 'Tesla Model Y — Matte Black',
@@ -209,6 +222,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const [tip, setTip] = useState(null)
   const [rating, setRating] = useState(0)
   const [lastCompleted, setLastCompleted] = useState(null)
+  const [showReceipt, setShowReceipt] = useState(false)
+  const [showCustomTip, setShowCustomTip] = useState(false)
+  const [customTipValue, setCustomTipValue] = useState('')
 
   const currentTierObj = RIDE_TIERS.find((t) => t.id === selectedTier) || RIDE_TIERS[0]
   // Prefer the numeric distanceMiles a geocoded destination carries (see
@@ -387,6 +403,9 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     setTip(null)
     setRating(0)
     setLastCompleted(null)
+    setShowReceipt(false)
+    setShowCustomTip(false)
+    setCustomTipValue('')
   }
 
   const handleMapClick = (coords) => {
@@ -426,6 +445,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           showRoute={stage !== 'home'}
           pickupCoords={pickupCoords}
           dropoffCoords={dropoffCoords}
+          // Only on the confirm screen — during searching/matched a
+          // centered card already occupies the same part of the map for
+          // nearby pickup/dropoff pairs, and the label just clutters
+          // behind it there.
+          dropoffLabel={stage === 'confirm' ? destination?.name : null}
           onMapClick={handleMapClick}
         />
       </div>
@@ -727,40 +751,85 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 <Check size={32} />
               </div>
               <h2 className="text-xl font-black text-white">Trip Completed</h2>
-              <p className="mt-1 text-sm font-medium text-white/60">
-                {lastCompleted?.driverName || 'Your driver'} got you there safely.
-              </p>
 
-              {/* Receipt */}
-              <div className="mt-5 w-full rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 text-left">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">Receipt</p>
-                <div className="flex justify-between text-[12px] font-semibold">
-                  <span className="text-white/55">{lastCompleted?.tier || 'Rush Standard'} fare</span>
-                  <span className="text-white">{usd(lastCompleted?.fare || 0)}</span>
+              {/* Driver row */}
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <Avatar size={48} initials={lastCompleted?.driver?.initials || initialsOf(lastCompleted?.driverName)} />
+                <div className="text-left">
+                  <p className="text-[13px] font-extrabold text-white">{lastCompleted?.driverName || 'Your driver'}</p>
+                  <p className="text-[11px] font-medium text-white/50">got you there safely</p>
                 </div>
-                <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
-                  <span className="text-white/55">Driver payout (88%)</span>
-                  <span className="text-[#34D399]">−{usd((lastCompleted?.fare || 0) * DRIVER_PCT)}</span>
-                </div>
-                <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
-                  <span className="text-white/55">Platform fee (12%)</span>
-                  <span className="text-white/80">{usd((lastCompleted?.fare || 0) * (1 - DRIVER_PCT))}</span>
-                </div>
-                {tip > 0 && (
-                  <div className="mt-1.5 flex justify-between text-[12px] font-semibold">
-                    <span className="text-white/55">Driver tip</span>
-                    <span className="text-[#FFD166]">+{usd(tip)}</span>
+              </div>
+
+              {/* Payment split — driver payout vs. total paid up front, full
+                  itemized breakdown one tap away. Mirrors the "driver
+                  earnings / your payment" split pattern, but every line is
+                  the real FairFare math, not an opaque platform fee. */}
+              <div className="mt-5 w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-left">
+                <button
+                  onClick={() => {
+                    triggerHaptic('light')
+                    setShowReceipt((v) => !v)
+                  }}
+                  className="flex w-full items-center gap-3 px-3.5 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Driver payout</p>
+                    <p className="mt-0.5 truncate text-[18px] font-black text-[#34D399]">
+                      {usd((lastCompleted?.fare || 0) * DRIVER_PCT)}
+                    </p>
                   </div>
-                )}
-                <div className="mt-2 flex justify-between border-t border-white/10 pt-2 text-[13px] font-bold">
-                  <span className="text-white/70">Total paid</span>
-                  <span className="text-white">{usd((lastCompleted?.fare || 0) + tip)}</span>
-                </div>
+                  <div className="h-8 w-px shrink-0 bg-white/10" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-white/40">Total paid</p>
+                    <p className="mt-0.5 truncate text-[18px] font-black text-white">
+                      {usd((lastCompleted?.fare || 0) + tip)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-white/40">
+                    {showReceipt ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </span>
+                </button>
+
+                <AnimatePresence>
+                  {showReceipt && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22, ease: 'easeOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="border-t border-white/10 px-3.5 py-3 text-[11.5px] font-semibold">
+                        <div className="flex justify-between">
+                          <span className="text-white/55">{lastCompleted?.tier || 'Rush Standard'} fare</span>
+                          <span className="text-white">{usd(lastCompleted?.fare || 0)}</span>
+                        </div>
+                        <div className="mt-1.5 flex justify-between">
+                          <span className="text-white/55">Driver payout (88%)</span>
+                          <span className="text-[#34D399]">−{usd((lastCompleted?.fare || 0) * DRIVER_PCT)}</span>
+                        </div>
+                        <div className="mt-1.5 flex justify-between">
+                          <span className="text-white/55">Platform fee (12%)</span>
+                          <span className="text-white/80">{usd((lastCompleted?.fare || 0) * (1 - DRIVER_PCT))}</span>
+                        </div>
+                        {tip > 0 && (
+                          <div className="mt-1.5 flex justify-between">
+                            <span className="text-white/55">Driver tip</span>
+                            <span className="text-[#FFD166]">+{usd(tip)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Tip selector */}
               <div className="mt-4 w-full text-left">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">Add a tip?</p>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                  Add a tip for {lastCompleted?.driverName || 'your driver'}?
+                </p>
                 <div className="flex justify-between gap-2">
                   {[{ v: 0, l: 'No tip' }, { v: 2, l: '$2' }, { v: 5, l: '$5' }, { v: 10, l: '$10' }].map((t) => (
                     <button
@@ -768,9 +837,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                       onClick={() => {
                         triggerHaptic('light')
                         setTip(t.v)
+                        setShowCustomTip(false)
+                        setCustomTipValue('')
                       }}
                       className={`flex-1 rounded-xl border py-2 text-sm font-bold transition-all active:scale-95 ${
-                        tip === t.v
+                        tip === t.v && !showCustomTip
                           ? 'border-[#FFD166]/60 bg-[#FFD166]/15 text-[#FFD166]'
                           : 'border-white/10 bg-white/[0.05] text-white/60'
                       }`}
@@ -779,12 +850,46 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                     </button>
                   ))}
                 </div>
+                {!showCustomTip ? (
+                  <button
+                    onClick={() => {
+                      triggerHaptic('light')
+                      setShowCustomTip(true)
+                    }}
+                    className="mt-2 w-full text-center text-[11px] font-bold text-[#38BDF8] active:opacity-70"
+                  >
+                    Enter custom amount
+                  </button>
+                ) : (
+                  <div className="mt-2 flex items-center gap-2 rounded-xl border border-[#38BDF8]/40 bg-white/[0.05] px-3 py-2">
+                    <span className="text-sm font-bold text-white/50">$</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="1"
+                      autoFocus
+                      value={customTipValue}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        setCustomTipValue(raw)
+                        const v = Math.max(0, parseFloat(raw) || 0)
+                        setTip(v)
+                      }}
+                      placeholder="0"
+                      className="w-full bg-transparent text-sm font-bold text-white outline-none placeholder-white/30"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Star rating */}
               <div className="mt-4 w-full text-left">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">Rate your trip</p>
-                <div className="flex justify-center gap-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Rate your trip</p>
+                <p className="mt-0.5 text-[11px] font-medium text-white/45">
+                  {weekdayOf(lastCompleted?.date) || 'Trip'} to {lastCompleted?.destination || 'your destination'}
+                </p>
+                <div className="mt-2 flex justify-center gap-1.5">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <motion.button
                       key={s}
@@ -882,6 +987,7 @@ function DriverViewContent({ onImmersiveChange }) {
           radar={online && !currentTrip}
           pickupCoords={currentTrip?.pickupCoords || SAVED_PLACES[0].latlng}
           dropoffCoords={currentTrip?.dropoffCoords || PRESET_DESTINATIONS[0].latlng}
+          dropoffLabel={currentTrip?.destination || PRESET_DESTINATIONS[0].name}
           carProgress={currentTrip?.progress || 0}
         />
       </div>
