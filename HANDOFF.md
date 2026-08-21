@@ -2,10 +2,11 @@
 
 **Repository**: [github.com/gabelossless/rush-riderapp](https://github.com/gabelossless/rush-riderapp)
 **Status**: 🟢 `main` at `2d419c5` (PRs [#7](https://github.com/gabelossless/rush-riderapp/pull/7) and [#8](https://github.com/gabelossless/rush-riderapp/pull/8) merged). Branch
-`claude/ride-demo-maps-visuals-6wgly0` carries two more commits on top, in
-an [open PR](https://github.com/gabelossless/rush-riderapp/pulls) — the
-two-leg trip animation and the nav/map/safety redesign documented at the
-bottom of this file. Lint clean, 47/47 tests across 5 files, build succeeds.
+`claude/ride-demo-maps-visuals-6wgly0` carries three more commits on top, in
+[PR #9](https://github.com/gabelossless/rush-riderapp/pull/9) — the
+two-leg trip animation, the nav/map/safety redesign, and this
+documentation pass, all detailed at the bottom of this file. Lint clean,
+47/47 tests across 5 files, build succeeds.
 **Also see**: [`ROADMAP.md`](ROADMAP.md) — the demo→MVP transition plan
 (what already transfers to production, what's demo-only and has to be
 rebuilt, and a phased plan starting with the ride/customer experience).
