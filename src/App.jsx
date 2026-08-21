@@ -8,13 +8,13 @@ import {
   ChevronUp,
   CircleCheck,
   Clock,
-  Home,
   MapPin,
   MessageSquare,
   Navigation,
   Navigation2,
   Radio,
   Search,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Star,
@@ -33,6 +33,7 @@ import FeedbackModal from './components/FeedbackModal'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import SignUpFlow from './components/SignUpFlow'
 import RideConfirmSheet from './components/RideConfirmSheet'
+import SafetySheet from './components/SafetySheet'
 import HeroMoment from './components/HeroMoment'
 import { PREFERENCES, RIDE_TIERS, PRESET_DESTINATIONS, SAVED_PLACES } from './data/mockData'
 import { triggerHaptic } from './utils/haptics'
@@ -153,49 +154,62 @@ function Header({ view, setView, onOpenAuth, onOpenWallet }) {
   )
 }
 
+// A tab's "active" pill is a resting-state highlight, not a routed-tab
+// indicator — Wallet/History/Feedback open overlays, they don't become the
+// current screen, so only Ride (the one persistent view underneath
+// everything) ever actually carries the active treatment. Pretending the
+// others are "selected" when tapped would be modeling a navigation
+// structure the app doesn't have.
+function NavItem({ icon: Icon, label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex flex-1 flex-col items-center gap-1 py-1 active:scale-95 transition-transform"
+    >
+      <span
+        className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-200 ${
+          active ? 'bg-[#38BDF8]/15' : ''
+        }`}
+      >
+        <Icon size={19} strokeWidth={2.3} className={active ? 'text-[#38BDF8]' : 'text-white/45'} />
+      </span>
+      <span className={`text-[10.5px] font-bold tracking-tight ${active ? 'text-white' : 'text-white/45'}`}>
+        {label}
+      </span>
+    </button>
+  )
+}
+
 function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
   return (
-    <div className="relative z-30 glass-strong border-t border-white/8 pb-[max(env(safe-area-inset-bottom),16px)] pt-2.5">
-      <div className="mx-auto flex max-w-lg items-center justify-between px-6">
-        <button
-          onClick={() => triggerHaptic('click')}
-          className="flex flex-col items-center gap-1.5 text-[#38BDF8] active:scale-95 transition-transform"
-        >
-          <Home size={19} strokeWidth={2.2} />
-          <span className="text-xs font-semibold text-white/80">Ride</span>
-        </button>
-        <button
+    <div className="relative z-30 border-t border-white/[0.07] bg-[#0A0D15]/85 pb-[max(env(safe-area-inset-bottom),14px)] pt-2 shadow-[0_-10px_30px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+      <div className="mx-auto flex max-w-lg items-stretch px-3">
+        <NavItem icon={Car} label="Ride" active onClick={() => triggerHaptic('click')} />
+        <NavItem
+          icon={Wallet}
+          label="Wallet"
           onClick={() => {
             triggerHaptic('click')
             onOpenWallet()
           }}
-          className="flex flex-col items-center gap-1.5 text-white/40 hover:text-white active:scale-95 transition-transform"
-        >
-          <Wallet size={19} strokeWidth={2.2} />
-          <span className="text-xs font-semibold text-white/60">Wallet</span>
-        </button>
-        <button
+        />
+        <NavItem
+          icon={Clock}
+          label="History"
           onClick={() => {
             triggerHaptic('click')
             onOpenHistory()
           }}
-          className="flex flex-col items-center gap-1.5 text-white/40 hover:text-white active:scale-95 transition-transform"
-        >
-          <Clock size={19} strokeWidth={2.2} />
-          <span className="text-xs font-semibold text-white/60">History</span>
-        </button>
-        <button
+        />
+        <NavItem
+          icon={MessageSquare}
+          label="Feedback"
           onClick={() => {
             triggerHaptic('click')
             onOpenFeedback()
           }}
-          className="flex flex-col items-center gap-1.5 text-white/40 hover:text-white active:scale-95 transition-transform"
-        >
-          <MessageSquare size={19} strokeWidth={2.2} />
-          <span className="text-xs font-semibold text-white/60">Feedback</span>
-        </button>
+        />
       </div>
-      <div className="mx-auto mt-2 h-1 w-24 rounded-full bg-white/15" />
     </div>
   )
 }
@@ -223,6 +237,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const [rating, setRating] = useState(0)
   const [lastCompleted, setLastCompleted] = useState(null)
   const [showReceipt, setShowReceipt] = useState(false)
+  const [showSafety, setShowSafety] = useState(false)
   const [showCustomTip, setShowCustomTip] = useState(false)
   const [customTipValue, setCustomTipValue] = useState('')
 
@@ -280,11 +295,16 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     }
   }, [currentTrip, stage, tripHistory, deductRiderFare])
 
+  // Ticks currentTrip.progress 0->1 while a leg is actively driving — the
+  // same field/ticker drives both legs (ACCEPTED = driver -> pickup,
+  // IN_PROGRESS = pickup -> dropoff); acceptRide()/startRide() each reset
+  // it to 0 for their leg. This is what actually moves the car marker on
+  // the map, via carProgress -> MapEngine.
   useEffect(() => {
     let timeout
-    if (currentTrip?.status === 'IN_PROGRESS') {
+    if (currentTrip?.status === 'ACCEPTED' || currentTrip?.status === 'IN_PROGRESS') {
       timeout = setTimeout(() => {
-        updateProgress(Math.min(1, (currentTrip.progress || 0.1) + 0.015))
+        updateProgress(Math.min(1, (currentTrip.progress || 0) + 0.015))
       }, 80)
     }
     return () => clearTimeout(timeout)
@@ -370,15 +390,20 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     if (tripStatus === 'SEARCHING') {
       // Match a demo driver after a short realistic wait.
       t = setTimeout(() => acceptRide(DEMO_DRIVER), 2500)
-    } else if (tripStatus === 'ACCEPTED') {
-      // Simulate: driver en route, then pickup, then begin the trip.
+    } else if (tripStatus === 'ACCEPTED' && tripProgress >= 1) {
+      // Driver's car has actually reached the pickup pin (see the progress
+      // ticker above) — a short settle beat, then "hop in", then leg 2
+      // (pickup -> dropoff) begins. Progress-gated the same way completion
+      // is below, instead of a fixed timer, so the notification always
+      // lines up with the car visibly arriving rather than an arbitrary
+      // duration that happened to look right.
       t = setTimeout(() => {
         setDemoNotification('Marcus is here — hop in!')
         setTimeout(() => {
           setDemoNotification(null)
           startRide()
         }, 1800)
-      }, 3500)
+      }, 400)
     } else if (tripStatus === 'IN_PROGRESS' && tripProgress >= 1) {
       // Auto-complete once the car animation reaches the destination.
       t = setTimeout(() => {
@@ -418,6 +443,14 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
   const walkingNote = pickup === 'Current Location' ? '~2 min walk' : 'At pin'
 
+  // Which leg of the trip the map/car should currently be showing: while
+  // the driver is en route to pickup, the active route is driver -> pickup
+  // (not the trip's overall pickup -> dropoff); pickup/dropoff pins stay
+  // visible throughout regardless of which leg is animating.
+  const isApproachingPickup = tripStatus === 'ACCEPTED'
+  const mapRouteOrigin = isApproachingPickup ? currentTrip?.driverStartCoords || pickupCoords : pickupCoords
+  const mapRouteDestination = isApproachingPickup ? pickupCoords : dropoffCoords
+
   return (
     <div className="relative h-full">
       {/* Dynamic Demo Banner Notification */}
@@ -445,6 +478,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           showRoute={stage !== 'home'}
           pickupCoords={pickupCoords}
           dropoffCoords={dropoffCoords}
+          routeOrigin={mapRouteOrigin}
+          routeDestination={mapRouteDestination}
           // Only on the confirm screen — during searching/matched a
           // centered card already occupies the same part of the map for
           // nearby pickup/dropoff pairs, and the label just clutters
@@ -623,11 +658,23 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
             className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-3"
           >
             <div className="glass w-full max-w-lg rounded-3xl border border-white/10 p-4 shadow-2xl shadow-black/50">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="rounded-full bg-[#38BDF8]/20 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#38BDF8]">
                   {currentTrip.status === 'ACCEPTED' ? 'Driver En Route' : 'Trip In Progress'}
                 </span>
-                <span className="text-sm font-black text-[#34D399]">{usd(currentTrip.fare)}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      triggerHaptic('light')
+                      setShowSafety(true)
+                    }}
+                    aria-label="Trip safety"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white/55 transition-colors hover:border-[#FF6B6B]/40 hover:text-[#FF6B6B] active:scale-95"
+                  >
+                    <ShieldAlert size={14} />
+                  </button>
+                  <span className="text-sm font-black text-[#34D399]">{usd(currentTrip.fare)}</span>
+                </div>
               </div>
 
               <div className="flex items-center gap-3.5 rounded-2xl border border-white/15 bg-zinc-900/90 p-3 shadow-lg shadow-black/60">
@@ -702,8 +749,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 })}
               </div>
 
-              {/* In-ride progress bar (visible while IN_PROGRESS) */}
-              {currentTrip.status === 'IN_PROGRESS' && (
+              {/* Progress bar — driver approaching pickup, then the trip
+                  itself; same bar, same currentTrip.progress field drives
+                  both (see the ticker effect above), just two different
+                  legs of one continuous "car is moving" story. */}
+              {(currentTrip.status === 'ACCEPTED' || currentTrip.status === 'IN_PROGRESS') && (
                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full w-full max-w-full rounded-full bg-gradient-to-r from-[#38BDF8] to-[#818CF8] transition-all"
@@ -924,6 +974,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <SafetySheet isOpen={showSafety} onClose={() => setShowSafety(false)} trip={currentTrip} />
     </div>
   )
 }
@@ -939,6 +991,7 @@ function DriverViewContent({ onImmersiveChange }) {
 
   const [online, setOnline] = useState(true)
   const [toast, setToast] = useState(null)
+  const [showSafety, setShowSafety] = useState(false)
   const [countdown, setCountdown] = useState(10)
 
   useEffect(() => {
@@ -979,14 +1032,28 @@ function DriverViewContent({ onImmersiveChange }) {
     timers.set(() => setToast(null), 3500)
   }
 
+  // Same leg logic as the passenger view — the driver's own map should
+  // show them approaching pickup first, then driving to dropoff, not the
+  // whole trip route the entire time. Both views read the same
+  // driverStartCoords, so rider and driver see one consistent picture.
+  const driverPickupCoords = currentTrip?.pickupCoords || SAVED_PLACES[0].latlng
+  const driverDropoffCoords = currentTrip?.dropoffCoords || PRESET_DESTINATIONS[0].latlng
+  const isApproachingPickup = currentTrip?.status === 'ACCEPTED'
+  const mapRouteOrigin = isApproachingPickup
+    ? currentTrip?.driverStartCoords || driverPickupCoords
+    : driverPickupCoords
+  const mapRouteDestination = isApproachingPickup ? driverPickupCoords : driverDropoffCoords
+
   return (
     <div className="relative h-full overflow-y-auto no-scrollbar">
       <div className="absolute inset-0">
         <MapShell
           showRoute={Boolean(currentTrip)}
           radar={online && !currentTrip}
-          pickupCoords={currentTrip?.pickupCoords || SAVED_PLACES[0].latlng}
-          dropoffCoords={currentTrip?.dropoffCoords || PRESET_DESTINATIONS[0].latlng}
+          pickupCoords={driverPickupCoords}
+          dropoffCoords={driverDropoffCoords}
+          routeOrigin={mapRouteOrigin}
+          routeDestination={mapRouteDestination}
           dropoffLabel={currentTrip?.destination || PRESET_DESTINATIONS[0].name}
           carProgress={currentTrip?.progress || 0}
         />
@@ -1053,8 +1120,8 @@ function DriverViewContent({ onImmersiveChange }) {
               <p className="truncate text-[11px] text-white/60">Pickup: {currentTrip.pickup}</p>
               <p className="truncate text-[11px] text-white/60">Dropoff: {currentTrip.destination}</p>
               <p className="mt-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold text-[#38BDF8]">
-                <Navigation size={11} /> Rider is {currentTrip.distance || '2.1 mi'} away — about{' '}
-                {currentTrip.eta || '2–5 min'} drive to pickup
+                <Navigation size={11} /> Pickup is {currentTrip.pickupDistance || '2.1 mi'} away — about{' '}
+                {currentTrip.pickupEta || '2–5 min'} drive
               </p>
             </div>
 
@@ -1074,12 +1141,26 @@ function DriverViewContent({ onImmersiveChange }) {
             animate={{ y: 0, opacity: 1 }}
             className="glass-strong mt-3 rounded-3xl border border-white/15 p-4"
           >
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#38BDF8]">
-              {currentTrip.status === 'ACCEPTED' ? 'En Route to Pickup' : 'Driving to Dropoff'}
-            </p>
-            <p className="truncate text-[14px] font-extrabold text-white">
-              {currentTrip.status === 'ACCEPTED' ? currentTrip.pickup : currentTrip.destination}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#38BDF8]">
+                  {currentTrip.status === 'ACCEPTED' ? 'En Route to Pickup' : 'Driving to Dropoff'}
+                </p>
+                <p className="truncate text-[14px] font-extrabold text-white">
+                  {currentTrip.status === 'ACCEPTED' ? currentTrip.pickup : currentTrip.destination}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  triggerHaptic('light')
+                  setShowSafety(true)
+                }}
+                aria-label="Trip safety"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white/55 transition-colors hover:border-[#FF6B6B]/40 hover:text-[#FF6B6B] active:scale-95"
+              >
+                <ShieldAlert size={14} />
+              </button>
+            </div>
             <p className="text-[11px] font-medium text-[#34D399]">
               Net Payout: {usd(currentTrip.driverFare || currentTrip.fare * 0.88)} (88%)
             </p>
@@ -1145,6 +1226,8 @@ function DriverViewContent({ onImmersiveChange }) {
           </div>
         )}
       </div>
+
+      <SafetySheet isOpen={showSafety} onClose={() => setShowSafety(false)} trip={currentTrip} />
     </div>
   )
 }

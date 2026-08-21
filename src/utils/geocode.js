@@ -102,3 +102,26 @@ export function haversineMiles(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
 }
+
+/** Destination point given a start point, a distance (miles), and a
+ * bearing (degrees, 0=N clockwise) — the great-circle inverse of
+ * haversineMiles. Used to place a driver's simulated starting position a
+ * plausible distance from pickup, in a stand-in for real driver GPS. */
+export function offsetLatLng(center, distanceMiles, bearingDeg) {
+  if (!center) return null
+  const R = 3958.8
+  const angular = distanceMiles / R
+  const bearingRad = (bearingDeg * Math.PI) / 180
+  const lat1 = (center.lat * Math.PI) / 180
+  const lng1 = (center.lng * Math.PI) / 180
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(angular) + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearingRad)
+  )
+  const lng2 =
+    lng1 +
+    Math.atan2(
+      Math.sin(bearingRad) * Math.sin(angular) * Math.cos(lat1),
+      Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2)
+    )
+  return { lat: (lat2 * 180) / Math.PI, lng: (((lng2 * 180) / Math.PI + 540) % 360) - 180 }
+}

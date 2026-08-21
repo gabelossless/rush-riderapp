@@ -4,6 +4,7 @@ import {
   Landmark,
   ShoppingBag,
   Palmtree,
+  Trophy,
   Car,
   Zap,
   Users,
@@ -99,6 +100,17 @@ export const PRESET_DESTINATIONS = [
     icon: Palmtree,
     tint: '#FFD700',
     latlng: { lat: 39.6656, lng: -105.2057 },
+  },
+  {
+    id: 'dest_6',
+    name: 'Ball Arena',
+    address: '1000 Chopper Cir, Denver',
+    eta: '7 min',
+    etaRange: '5–9 min',
+    distance: '1.7 mi',
+    icon: Trophy,
+    tint: '#8A2BE2',
+    latlng: { lat: 39.7487, lng: -105.0077 },
   },
 ]
 

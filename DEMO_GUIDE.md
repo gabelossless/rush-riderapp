@@ -28,17 +28,16 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 ## 🚗 2. Passenger Ride Lifecycle Test
 
 1. After signing in (or **Explore the Demo → Alex Rivera**), a short **RUSH brand beat** plays (~5s): a car pulls up, a transparent fare card shows "$24.90 — No surge, 88% to the driver," then fades out. Tap anywhere to skip. You then land on the map with a single **"Where to?"** bar — the primary action.
-2. Pick a saved place (**Home / Work**), a **Recent** destination, or tap **"Where to?"** to search Denver destinations (Union Station, DIA, Red Rocks, Cherry Creek…).
+2. Pick a saved place (**Home / Work**), a **Recent** destination, tap **"Where to?"** to search Denver destinations (Union Station, DIA, Red Rocks, Cherry Creek, Ball Arena…), or type any real address (live geocoded).
 3. On the **Confirm** sheet, everything is one screen:
    * Route summary with walking note ("~2 min walk to pickup")
    * **Pre-selected Rush Standard** with the price most prominent; tap **Change** to compare Express/XL
-   * **FairFare chip**: "88% of your fare goes to your driver" — tap for full breakdown
+   * **FairFare chip**: "88% of your fare goes to your driver" — tap for the visual split gauge + full breakdown
    * **"No surge games — the price you see is the price you pay."**
 4. Tap **Request Rush Standard**.
-5. **Honest searching state**: "Matching you with a human driver… usually 2–4 min in your area." After ~6s the copy honestly expands: "Still searching — expanding to nearby neighborhoods."
-   * Tap **⚡ Auto-Match Demo Driver** (*Marcus Vance*, Tesla Model Y) or switch to Driver view to accept manually.
-6. Matched screen shows driver + **"Verified Human"** badge, car, rating, plate. Run **Start Ride Demo → Complete Ride**.
-7. Completed screen: receipt (88% driver payout / 12% platform fee), tip selector, 5-star rating.
+5. **Honest searching state**: "Matching you with a human driver… usually 2–4 min in your area." A "pinging nearby drivers" pulse animation plays; after ~6s the copy honestly expands: "Still searching — expanding to nearby neighborhoods." The whole lifecycle from here auto-advances — no buttons needed to watch it happen — or switch to Driver view at any point to accept and run it live from the other side.
+6. Matched screen shows driver + **"Verified Human"** badge, car, rating, plate. Watch the **map**: the car genuinely animates from a simulated driver position to your pickup pin, "arrives," then animates from pickup to your destination — not a single straight-line hop. A shield icon next to the fare opens **real** safety actions (Call 911, share trip status).
+7. Trip auto-completes once the car reaches the destination. Completed screen: driver avatar, a **Driver Payout | Total Paid** split box (tap to expand the full breakdown), a tip selector with a **custom amount** option, and a 5-star rating with confetti on success.
 
 ---
 
@@ -47,8 +46,8 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 1. Tap the **Rider/Driver** pill in the header (or sign up as a driver).
 2. Toggle **Online & Listening**.
 3. Dashboard: Today's Earnings, Trips, 88% Keep Rate.
-4. Incoming request card shows honest details: **"Rider is 2.1 mi away — about 2–5 min drive to pickup"** and the payout up front.
-5. **Accept Rush Ride** → **Start Ride** → **Complete Ride & Claim Payout** (88% credited to wallet).
+4. Incoming request card shows honest details: **"Pickup is 1.6 mi away — about 4 min drive"** (a real distance computed from a simulated driver position, not the trip's total distance) and the payout up front.
+5. **Accept Rush Ride** → the map animates you toward the pickup pin (a shield icon next to the destination opens real safety actions) → **Start Ride** → drive to dropoff → **Complete Ride & Claim Payout** (88% credited to wallet). One-tap **Google Maps** / **Waze** buttons hand off real navigation for whichever leg is active.
 
 ---
 
@@ -67,10 +66,11 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 * **Live fleet (40+ cars)**: simulated Rush drivers roam the metro continuously, rendered as directional arrows rotated to their real heading — the map feels alive.
 * **Surge zones**: six pulsing warm anchors (DIA, Union Station, Coors Field, Red Rocks, 16th St Mall, Cherry Creek).
 * **Real driving routes**: pickup → destination is routed through the public OSRM engine (Union Station → DIA is a real ~42 km drive), with the car animating along actual roads, rotating to face its direction of travel, and a live ETA/distance-remaining HUD ticking down as the trip progresses.
+* **Two-leg trip animation**: the car doesn't just animate pickup → dropoff — it animates driver → pickup first (a simulated starting position, honest distance/ETA shown to the driver), "arrives" once it actually reaches the pin, then animates pickup → dropoff. The ETA HUD labels which leg is active ("To pickup" / "To destination").
 * **Cinematic tilt + 3D buildings**: the map eases into a driving-perspective tilt once a trip is in progress, and renders real building extrusions where the vendor tiles include them (try zooming into a short trip, e.g. Home → Work).
 * **Type any address**: pickup and destination search live-geocode free-text addresses via OpenStreetMap Nominatim — not limited to the Denver preset list.
 * **Tap to pin**: tap anywhere on the map to set a custom pickup ("Pinned location").
-* **Offline fallback**: if WebGL/network is unavailable, the app auto-switches to a simplified Denver grid engine.
+* **Offline fallback, redesigned**: if WebGL/network is unavailable (or the free tile host is unreachable), the app switches to a stylized simplified map — soft ambient glows, implied city blocks, a directional car marker — designed to read as a deliberate style choice, not a broken state.
 
 ## 🧭 5b. Driver Navigation Handoff
 
@@ -78,7 +78,13 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 
 ---
 
-## 📲 6. PWA Installation
+## 🛡️ 6. Safety Access
+
+A shield icon sits next to the fare on every active-trip screen, rider and driver alike. It opens two real actions, not a menu: **Call 911** (opens the actual phone dialer) and **Share trip status** (hands the driver's name, plate, and route to someone you trust via the native share sheet, with a clipboard fallback).
+
+---
+
+## 📲 7. PWA Installation
 
 * **iOS Safari**: Share → *Add to Home Screen*.
 * **Android Chrome**: *Install App* / *Add to Home Screen*.
@@ -86,7 +92,7 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 
 ---
 
-## 🧪 7. Test Checklist
+## 🧪 8. Test Checklist
 
 | Scenario | How |
 |---|---|
@@ -95,5 +101,13 @@ Every visitor lands on the **welcome page** first — no app access without it. 
 | Returning user | `alex.rider@rushtest.com` → Welcome back, one tap |
 | Demo presets | Explore the Demo → Alex Rivera / Marcus Vance |
 | Ride request | Where to? → destination → confirm → request |
+| Two-leg animation | Request a ride → watch the car animate driver → pickup → dropoff, not a single hop |
+| Safety access | Matched/active-trip screen → shield icon → Call 911 / Share trip status |
 | Cross-role demo | Rider requests → header pill → Driver → accept |
 | Logout | Avatar → Account → Log Out → back to welcome |
+
+---
+
+See [`ROADMAP.md`](./ROADMAP.md) for the plan taking this from demo to a
+real MVP — what already transfers to production versus what has to be
+rebuilt, and why the ride/customer experience comes first.

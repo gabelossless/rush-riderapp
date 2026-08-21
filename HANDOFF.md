@@ -1,12 +1,26 @@
 # 🤝 Agent Handoff & Project Status Report
 
 **Repository**: [github.com/gabelossless/rush-riderapp](https://github.com/gabelossless/rush-riderapp)
-**Status**: 🟢 `main` at `3f8c392`, working tree clean, build/lint/tests all pass, pushed live. 40/40 tests across 5 files.
+**Status**: 🟢 `main` at `2d419c5` (PRs [#7](https://github.com/gabelossless/rush-riderapp/pull/7) and [#8](https://github.com/gabelossless/rush-riderapp/pull/8) merged). Branch
+`claude/ride-demo-maps-visuals-6wgly0` carries three more commits on top, in
+[PR #9](https://github.com/gabelossless/rush-riderapp/pull/9) — the
+two-leg trip animation, the nav/map/safety redesign, and this
+documentation pass, all detailed at the bottom of this file. Lint clean,
+47/47 tests across 5 files, build succeeds.
+**Also see**: [`ROADMAP.md`](ROADMAP.md) — the demo→MVP transition plan
+(what already transfers to production, what's demo-only and has to be
+rebuilt, and a phased plan starting with the ride/customer experience).
 
 ---
 
 ## 🌐 Live Deployment
 - 🟢 **Primary App**: [https://rush-riderapp.vercel.app/](https://rush-riderapp.vercel.app/) (Vercel, auto-deploys `main` via GitHub integration)
+- ⚠️ **Known issue, unconfirmed root cause**: live screenshots from a real
+  phone on LTE (not just this sandbox, which blocks the tile host by
+  policy) showed the app stuck in the offline-fallback map / "Loading
+  Denver map…" state. The free `tiles.openfreemap.org` host may be
+  flaky or rate-limiting real traffic. Worth investigating before it
+  affects a real demo — see "Suggested Next Steps" below.
 
 ---
 
@@ -178,6 +192,160 @@ correct coordinates on a phone.
     `text-white/40` on `bg-white/[0.03]`, low enough contrast to hurt
     readability; bumped to `/55`.
 
+### Latest session — two-leg trip animation (driver → pickup → dropoff)
+
+17. **The car never actually approached pickup.** User asked to verify:
+    select a destination (Ball Arena), request a ride — does the car/driver
+    visibly move from the driver's own location to pickup, then to dropoff?
+    It didn't. `carProgress` only ever animated a single OSRM route
+    (pickup → dropoff), and the progress ticker (`src/App.jsx`) only ran
+    during `IN_PROGRESS` — during `ACCEPTED` ("Driver En Route", ~5s in the
+    auto-lifecycle) the car sat completely still despite the UI claiming
+    the driver was approaching. Also found a related honesty bug: the
+    driver's incoming-request card ("Rider is X mi away") used the trip's
+    *total* pickup→dropoff distance, not the actual driver-to-pickup
+    distance.
+    - **`src/utils/geocode.js`**: added `offsetLatLng(center, miles,
+      bearingDeg)` — the great-circle inverse of the existing
+      `haversineMiles`.
+    - **`src/context/TripContext.jsx`**: `requestRide` now calls
+      `simulateDriverApproach(pickupCoords)` — stands in for "dispatch
+      already knows nearby driver positions when broadcasting an offer" (no
+      second device to read real GPS from in a demo) — picking a random
+      point 0.6–2.8mi from pickup and storing `driverStartCoords` +
+      honest `pickupDistance`/`pickupEta` labels on the trip, computed from
+      that same simulated point so the numbers can never contradict each
+      other. `acceptRide` keeps a defensive fallback only for a trip
+      persisted before this field existed.
+    - **`src/App.jsx`**: the progress ticker now runs during `ACCEPTED` too
+      (not just `IN_PROGRESS`) — same `currentTrip.progress` field, same
+      ticker, drives both legs; `acceptRide`/`startRide` each reset it to 0
+      for their leg. The auto-advance effect's `ACCEPTED` branch changed
+      from a fixed 3500ms timer to `tripStatus === 'ACCEPTED' &&
+      tripProgress >= 1` — progress-gated exactly like completion already
+      was, so "driver arrived" now means the car actually reached the pin,
+      not an arbitrary duration. Computed `mapRouteOrigin`/
+      `mapRouteDestination` per view (driver's own `driverStartCoords` →
+      pickup while `ACCEPTED`, pickup → dropoff otherwise) and threaded
+      them into both `<MapShell>` call sites (rider's and driver's own map
+      read the same simulated position). Fixed the "Rider is X away" card
+      to use the new `pickupDistance`/`pickupEta` fields.
+    - **`src/components/MapEngine.jsx`**: added `routeOrigin`/
+      `routeDestination` props (default to `pickupCoords`/`dropoffCoords`,
+      so any caller not passing them keeps the old single-route behavior)
+      — the OSRM fetch, car animation, and ETA HUD all key off these now,
+      while `pickupCoords`/`dropoffCoords` continue to place the pickup/
+      dropoff pins regardless of which leg is animating. Same split
+      applied to the offline SVG fallback (`routeFrom`/`routeTo` vs
+      `pickup`/`dropoff`), since that's what actually renders on networks
+      that can't reach the tile/OSRM hosts (including this sandbox). ETA
+      HUD gained a "To pickup" / "To destination" label so it's clear
+      which leg it's tracking.
+    - Added **Ball Arena** as a real preset destination
+      (`src/data/mockData.js`) — the user's own example, and genuinely
+      useful Denver venue coverage.
+    - **Verified live**, not just reasoned through: a scripted Playwright
+      run against the offline fallback (this sandbox blocks the tile/OSRM
+      hosts) read the actual `<g data-testid="fallback-car">` SVG
+      transform and `localStorage`'s trip state directly (not scraped UI
+      text — first pass used text matching and got a false-positive on an
+      always-rendered checklist label, corrected to ground-truth state).
+      Confirmed: `driverStartCoords` generated ~1.6mi from pickup; car
+      genuinely moves during the approach leg (progress 0→0.33 over 2s,
+      position delta ~4.6px); car visibly resets/snaps to the pickup point
+      when leg 2 begins (9.7px jump); `dropoffCoords` correctly resolved
+      to Ball Arena's real coordinates; leg 2 animates correctly; full
+      trip still completes end-to-end (no regression of the earlier
+      livelock fix). Added `data-testid="fallback-car"` to the fallback's
+      car `<g>` purely as a test hook — no visual/behavioral change.
+
+### Latest session — nav bar redesign, map polish, real safety access, research
+
+User flagged the bottom nav as "poorly designed and old fashioned" from a
+live screenshot of the deployed app, asked for the offline fallback map
+("cyber grid") to be modernized, and asked for research into real
+Uber/Lyft rider complaints plus an Apple/Jobs design lens applied to the
+result.
+
+**Research** (web search): the most consistently cited rideshare complaints are
+surge-price opacity, driver-arrival uncertainty, and — cited by 45%+ of
+riders, the single most common concern — poor safety access during a
+ride. Sources: [sokolovelaw.com](https://www.sokolovelaw.com/blog/8-uber-rideshare-safety-tips/),
+[estradalawgroup.com](https://www.estradalawgroup.com/blog/uber-safety-concerns-in-2026-why-riders-are-rethinking-the-app-and-what-you-should-know),
+[unstar.app](https://unstar.app/blog/ride-sharing-app-reviews-uber-lyft-bolt-grab-2026).
+Rush already differentiates on the first two by design (no surge, ever;
+this session's two-leg animation + honest ETA work directly addresses
+arrival uncertainty). Safety access had **zero** affordance anywhere in
+the active-trip UI — closed that gap directly rather than only restyling.
+
+18. **Bottom nav** ([App.jsx](src/App.jsx) — `BottomNav`, `NavItem`):
+    - Removed the hand-drawn "home indicator" pill under the tabs
+      (`<div className="mx-auto mt-2 h-1 w-24...">`). Every real device
+      already draws its own; faking one was a common ~2018-era pattern
+      that now just reads as dated, since virtually every user has the
+      real thing.
+    - Active state is a soft rounded highlight capsule behind the icon,
+      not just a color change — but **only** the "Ride" tab ever carries
+      it. Wallet/History/Feedback open modals, they don't become "the
+      current screen," so giving them a persistent "selected" indicator
+      would misrepresent a navigation structure the app doesn't have.
+      New `NavItem` sub-component documents this reasoning inline.
+    - Fixed a semantic mismatch: the "Ride" tab used a house (`Home`)
+      icon; swapped to `Car`. `Home` import removed (no longer used
+      anywhere in the file).
+    - Floating glass treatment (backdrop blur + a soft lifted shadow)
+      replacing a flat `border-t` — reads as a raised bar, not a divided
+      section of the same flat surface.
+19. **Offline fallback map** ([MapEngine.jsx](src/components/MapEngine.jsx)
+    — `CyberGridFallback`, still the same function name internally, its
+    old external persona): this is what actually renders on any network
+    that can't reach `tiles.openfreemap.org` — including, per the live
+    screenshots, possibly real production traffic, not just this sandbox.
+    - Replaced the flat `#0A0D15` fill + uniform 0.6-opacity crosshatch
+      grid ("graph paper") with a graduated radial-gradient ground plane,
+      two low ambient glow ellipses (same blue/indigo pairing used
+      throughout the app — `HeroMoment`'s ambient glows, the
+      `text-gradient` utility), a handful of soft rounded "block" fills
+      implying land use the way Apple Maps washes parks/blocks in a
+      faint tint rather than leaving pure void, and two diagonal roads
+      instead of a perfectly uniform lattice (Denver's actual downtown
+      grid runs at an angle to the metro grid — a detail specific to
+      this city, not generic).
+    - Reframed `"OFFLINE MAP MODE"` — a large center-bottom admission of
+      failure — into a small, quiet corner mark ("Rush Map · Simplified
+      View") in the same screen position the real map's own "Live Denver
+      Map" badge occupies, so switching between the two states reads as
+      consistent product chrome, not a downgrade notice.
+    - Car marker is now a rotating directional arrow/polygon (bearing
+      derived from the active route's origin→destination, since the
+      fallback route is one smooth bezier rather than per-segment OSRM
+      geometry, so an overall bearing is a fair approximation) instead of
+      a static rounded rect — parity with the real MapLibre map's arrow
+      markers from an earlier session, instead of a visibly second-class
+      fallback. Pickup ring now pulses (`<animate>`), matching the real
+      map's `.rush-marker-ring` CSS animation, which the fallback
+      previously didn't have.
+20. **New**: [`SafetySheet.jsx`](src/components/SafetySheet.jsx) — two
+    real actions, deliberately not a menu of icons: a `tel:911` link
+    (opens the actual phone dialer) and a "Share trip status" button
+    (Web Share API — `navigator.share()` — with a `navigator.clipboard`
+    fallback when unsupported; message includes driver name/plate/route).
+    Wired into both `PassengerViewContent`'s and `DriverViewContent`'s
+    active-trip screens via a small shield-icon button next to the
+    status badge; both get their own `showSafety` state, same component.
+    - **Verified live** via Playwright screenshots (nav bar, fallback map,
+      and the safety sheet opening/closing) — no console errors.
+
+**Verification caveat, as always in this sandbox**: the fallback map is
+what actually renders here (network policy blocks the tile host), so the
+fallback redesign was screenshot-verified directly; the real MapLibre
+map's equivalent visual quality was not (nothing about this session's
+changes touched the real map's rendering path, only the fallback's — so
+risk here is low, but a live-network check on the deployed preview is
+still the more complete verification).
+
+Lint clean, 47/47 tests, build succeeds.
+
 ---
 
 ## 🧩 Current Architecture
@@ -306,14 +474,49 @@ engine, PWA install), see [DEMO_GUIDE.md](DEMO_GUIDE.md).
 ---
 
 ## 🔭 Suggested Next Steps
-1. **Manual live-network verification** of the map fixes (route gradient
-   rendering, car marker snapping to a newly selected route) — this sandbox
-   couldn't reach the tile/OSRM hosts to confirm visually. Build + deploy to
-   Vercel, then run the passenger flow: request a ride and confirm the route
-   line renders a blue→indigo gradient, then change the destination mid-flow
-   and confirm the car snaps to the new route.
-2. ~~**`switchRole()` data loss`**~~ — **DONE** (custom identity now
-   preserved on role switch; new AuthContext tests added). Nothing left.
-3. **Tile host reliability** — if the loading watchdog (fix #4) fires often
-   in the wild, consider a paid/self-hosted tile provider instead of
-   OpenFreeMap's free tier. Deferred: observe production metrics first.
+
+Roughly in priority order. Everything under "Demo polish" is scoped for
+whoever's next on this branch/PR; everything under "MVP" is intentionally
+**not started** — see [`ROADMAP.md`](ROADMAP.md) for the full plan and
+why the ride/customer experience comes before it.
+
+### Demo polish (small, scoped)
+1. **Tile host reliability — now with real-world evidence, not just a
+   sandbox limitation.** Live screenshots from a real phone on LTE showed
+   the app stuck in offline-fallback / "Loading Denver map…" — this
+   wasn't just this sandbox's network policy blocking
+   `tiles.openfreemap.org`. Worth a real investigation: check whether the
+   free tile host is rate-limiting, check the watchdog's 8s timeout isn't
+   too aggressive for slower connections, and seriously consider a
+   paid/self-hosted tile provider before this shows up in front of an
+   investor. This item was previously "deferred, observe production
+   metrics first" — the metrics have now been observed.
+2. **Manual live-network verification** of the real MapLibre map's visual
+   quality (3D buildings, cinematic tilt, live fleet arrows, the ETA HUD,
+   the two-leg route animation) — every one of those was built and
+   verified against the *offline fallback* in this sandbox, never the
+   real tile-based map, because the sandbox can't reach the tile/OSRM/
+   Nominatim hosts. The fallback and the real map share the same
+   underlying state (`routeOrigin`/`routeDestination`/`carProgress`
+   props), so risk is low, but nobody has actually watched the real map
+   do any of this live. Deploy, then request a ride on a normal network
+   and just watch the whole lifecycle play out.
+3. **Nav bar / new-screen sweep** — the bottom nav and offline map got a
+   full pass this session; the header (wallet/role/avatar pills) and a
+   few other screens haven't had the same "would Steve Jobs approve"
+   scrutiny applied. Worth a dedicated pass if there's appetite for more
+   polish before moving to backend work.
+
+### MVP — backlogged, not started
+4. **Phase 0 (backend foundation)** — explicitly deferred per the user's
+   own instruction ("backlog phase zero backend work for now"). See
+   `ROADMAP.md` for the concrete starting point (Supabase: Postgres +
+   Auth + Realtime, re-plumbing `AuthContext`/`TripContext` to talk to it
+   instead of `localStorage`) whenever this is picked back up. Nothing
+   in this repo currently depends on it existing — the whole point of
+   the roadmap's sequencing is that the rider-facing UI keeps working
+   and keeps improving independent of when backend work starts.
+
+### Resolved, keeping for history
+- ~~**`switchRole()` data loss`**~~ — **DONE** (custom identity now
+  preserved on role switch; AuthContext tests added).

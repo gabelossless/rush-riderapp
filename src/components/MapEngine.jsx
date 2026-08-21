@@ -145,9 +145,20 @@ function MapEngineContent({
   showRoute = false,
   pickupCoords = null,
   dropoffCoords = null,
+  // routeOrigin/routeDestination drive the actual OSRM fetch + car
+  // animation — they're a separate pair from pickupCoords/dropoffCoords
+  // (which always place the pickup/dropoff pins) so a caller can animate
+  // the car along a different leg — e.g. driver's current position ->
+  // pickup, while the trip's real pickup/dropoff pins stay put. Defaults
+  // to pickup/dropoff so any caller that doesn't care about legs (or hasn't
+  // been updated) gets the old single-route behavior unchanged.
+  routeOrigin = null,
+  routeDestination = null,
   dropoffLabel = null,
   onMapClick,
 }) {
+  const effectiveOrigin = routeOrigin || pickupCoords
+  const effectiveDestination = routeDestination || dropoffCoords
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const [mapState, setMapState] = useState('loading') // loading | ready | error
@@ -169,6 +180,8 @@ function MapEngineContent({
 
   const pickupKey = pickupCoords ? `${pickupCoords.lat},${pickupCoords.lng}` : ''
   const dropoffKey = dropoffCoords ? `${dropoffCoords.lat},${dropoffCoords.lng}` : ''
+  const originKey = effectiveOrigin ? `${effectiveOrigin.lat},${effectiveOrigin.lng}` : ''
+  const destinationKey = effectiveDestination ? `${effectiveDestination.lat},${effectiveDestination.lng}` : ''
 
   /* ---------- Map creation ---------- */
   useEffect(() => {
@@ -419,9 +432,12 @@ function MapEngineContent({
   }
 
   /* ---------- Route fetching (OSRM) ---------- */
+  // Fetches whichever leg is currently active (effectiveOrigin ->
+  // effectiveDestination), not always pickup -> dropoff — see the
+  // routeOrigin/routeDestination prop comment above.
   useEffect(() => {
     if (!map || mapState !== 'ready') return
-    if (!showRoute || !pickupCoords || !dropoffCoords) {
+    if (!showRoute || !effectiveOrigin || !effectiveDestination) {
       if (map.getSource('route')) {
         map.getSource('route').setData({ type: 'Feature', geometry: null, properties: {} })
       }
@@ -432,8 +448,8 @@ function MapEngineContent({
       return
     }
 
-    const { lat: pLat, lng: pLng } = pickupCoords
-    const { lat: dLat, lng: dLng } = dropoffCoords
+    const { lat: pLat, lng: pLng } = effectiveOrigin
+    const { lat: dLat, lng: dLng } = effectiveDestination
     // Clear the previous route's ETA immediately — otherwise the HUD keeps
     // showing the old route's numbers for the moment it takes this fetch
     // to resolve, which reads as a stale/wrong ETA rather than a loading one.
@@ -469,7 +485,7 @@ function MapEngineContent({
       })
 
     return () => controller.abort()
-  }, [map, mapState, showRoute, pickupKey, dropoffKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, mapState, showRoute, originKey, destinationKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---------- Marker positions ---------- */
   useEffect(() => {
@@ -605,13 +621,27 @@ function MapEngineContent({
     return projectToGrid(dropoffCoords.lat, dropoffCoords.lng)
   }, [dropoffKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The active leg's endpoints, projected — same distinction as
+  // effectiveOrigin/effectiveDestination above: the route line + car
+  // animate along whichever leg is active, while the pickup/dropoff pins
+  // (above) always stay put at their real positions.
+  const fallbackRouteFrom = useMemo(() => {
+    if (!effectiveOrigin) return null
+    return projectToGrid(effectiveOrigin.lat, effectiveOrigin.lng)
+  }, [originKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fallbackRouteTo = useMemo(() => {
+    if (!effectiveDestination) return null
+    return projectToGrid(effectiveDestination.lat, effectiveDestination.lng)
+  }, [destinationKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const fallbackCar = useMemo(() => {
-    if (!fallbackPickup || !fallbackDropoff) return null
+    if (!fallbackRouteFrom || !fallbackRouteTo) return null
     return {
-      x: fallbackPickup.x + (fallbackDropoff.x - fallbackPickup.x) * clamp01(carProgress),
-      y: fallbackPickup.y + (fallbackDropoff.y - fallbackPickup.y) * clamp01(carProgress),
+      x: fallbackRouteFrom.x + (fallbackRouteTo.x - fallbackRouteFrom.x) * clamp01(carProgress),
+      y: fallbackRouteFrom.y + (fallbackRouteTo.y - fallbackRouteFrom.y) * clamp01(carProgress),
     }
-  }, [fallbackPickup, fallbackDropoff, carProgress])
+  }, [fallbackRouteFrom, fallbackRouteTo, carProgress])
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-3xl bg-[#0A0D15] select-none">
@@ -632,6 +662,8 @@ function MapEngineContent({
           showRoute={showRoute}
           pickup={fallbackPickup}
           dropoff={fallbackDropoff}
+          routeFrom={fallbackRouteFrom}
+          routeTo={fallbackRouteTo}
           dropoffLabel={dropoffLabel}
           car={fallbackCar}
           radar={radar}
@@ -656,9 +688,15 @@ function MapEngineContent({
         </div>
       )}
 
-      {/* Live ETA / distance-remaining HUD — driven by the real OSRM route */}
+      {/* Live ETA / distance-remaining HUD — driven by the real OSRM route
+          for whichever leg is active. Labeled so it's clear which leg:
+          destinationKey matching pickupKey means the active route ends at
+          the pickup pin (driver approaching), not the trip's real dropoff. */}
       {mapState === 'ready' && showRoute && routeInfo && (
         <div className="pointer-events-none absolute top-3 right-3 z-20 flex flex-col items-end gap-0.5 rounded-2xl border border-[#38BDF8]/30 bg-black/75 px-3 py-2 text-right shadow-lg backdrop-blur-md">
+          <span className="text-[8.5px] font-bold uppercase tracking-wider text-white/40">
+            {destinationKey && destinationKey === pickupKey ? 'To pickup' : 'To destination'}
+          </span>
           <span className="text-[16px] font-black leading-none text-white">
             {formatEtaMinutes(routeInfo.durationS, carProgress)} min
           </span>
@@ -696,16 +734,20 @@ function projectToGrid(lat, lng) {
 /*  Offline/WebGL fallback — simplified Denver grid                    */
 /* ------------------------------------------------------------------ */
 
-function CyberGridFallback({ showRoute, pickup, dropoff, dropoffLabel, car, radar, onMapClick }) {
+function CyberGridFallback({ showRoute, pickup, dropoff, routeFrom, routeTo, dropoffLabel, car, radar, onMapClick }) {
+  // The drawn path follows the active leg (routeFrom -> routeTo), which is
+  // driver->pickup during approach and pickup->dropoff during the trip —
+  // not always the pickup/dropoff pins, which stay fixed at their real
+  // spots regardless of which leg is currently animating.
   const routePath = useMemo(() => {
-    if (!pickup || !dropoff) return ''
-    const x1 = pickup.x, y1 = pickup.y, x2 = dropoff.x, y2 = dropoff.y
+    if (!routeFrom || !routeTo) return ''
+    const x1 = routeFrom.x, y1 = routeFrom.y, x2 = routeTo.x, y2 = routeTo.y
     const cx1 = x1 + (x2 - x1) * 0.35
     const cy1 = y1 - 40
     const cx2 = x1 + (x2 - x1) * 0.65
     const cy2 = y2 + 40
     return `M ${x1} ${y1} C ${cx1} ${cy1} ${cx2} ${cy2} ${x2} ${y2}`
-  }, [pickup, dropoff])
+  }, [routeFrom, routeTo])
 
   const handleClick = (e) => {
     if (!onMapClick) return
@@ -718,6 +760,16 @@ function CyberGridFallback({ showRoute, pickup, dropoff, dropoffLabel, car, rada
     )
     onMapClick({ lat, lng })
   }
+
+  // A constant heading for the car — the fallback route is one smooth
+  // curve rather than per-segment geometry like the real map's OSRM
+  // route, so the overall origin->destination bearing is a fair
+  // approximation of "which way is the car facing" without needing to
+  // differentiate the bezier at every frame.
+  const carHeadingDeg = useMemo(() => {
+    if (!routeFrom || !routeTo) return 0
+    return (Math.atan2(routeTo.x - routeFrom.x, -(routeTo.y - routeFrom.y)) * 180) / Math.PI
+  }, [routeFrom, routeTo])
 
   return (
     <svg
@@ -737,38 +789,69 @@ function CyberGridFallback({ showRoute, pickup, dropoff, dropoffLabel, car, rada
           <stop offset="55%" stopColor="#000000" stopOpacity="0" />
           <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
         </radialGradient>
+        <radialGradient id="fgGround" cx="50%" cy="8%" r="95%">
+          <stop offset="0%" stopColor="#141B2E" />
+          <stop offset="55%" stopColor="#0C1220" />
+          <stop offset="100%" stopColor="#07090F" />
+        </radialGradient>
+        <radialGradient id="fgGlowBlue" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="fgGlowIndigo" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#818CF8" stopOpacity="0.13" />
+          <stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
-      <rect width="400" height="470" fill="#0A0D15" />
-      <g stroke="#33456B" strokeLinecap="round">
-        <line x1="0" y1="120" x2="400" y2="120" strokeWidth="7" />
-        <line x1="0" y1="200" x2="400" y2="200" strokeWidth="9" />
-        <line x1="0" y1="280" x2="400" y2="280" strokeWidth="6" />
-        <line x1="0" y1="360" x2="400" y2="360" strokeWidth="8" />
-        <line x1="80" y1="0" x2="80" y2="470" strokeWidth="7" />
-        <line x1="170" y1="0" x2="170" y2="470" strokeWidth="6" />
-        <line x1="250" y1="0" x2="250" y2="470" strokeWidth="9" />
-        <line x1="340" y1="0" x2="340" y2="470" strokeWidth="6" />
+      {/* Ground — a soft graduated dark field rather than a flat fill,
+          plus two low, wide ambient glows (same blue/indigo pairing as
+          the rest of the app) instead of a literal grid pretending to be
+          graph paper. */}
+      <rect width="400" height="470" fill="url(#fgGround)" />
+      <ellipse cx="90" cy="70" rx="230" ry="170" fill="url(#fgGlowBlue)" />
+      <ellipse cx="330" cy="380" rx="220" ry="190" fill="url(#fgGlowIndigo)" />
+
+      {/* Road network — deliberately irregular block sizes and a couple
+          of diagonals (Denver's own downtown grid runs at an angle to
+          the metro grid), not a uniform lattice. Muted enough to read as
+          structure/context, not as the foreground. */}
+      <g stroke="#26314A" strokeLinecap="round" opacity="0.85">
+        <line x1="0" y1="96" x2="400" y2="96" strokeWidth="5" />
+        <line x1="0" y1="184" x2="400" y2="176" strokeWidth="7" />
+        <line x1="0" y1="298" x2="400" y2="304" strokeWidth="5" />
+        <line x1="0" y1="392" x2="400" y2="388" strokeWidth="6" />
+        <line x1="64" y1="0" x2="64" y2="470" strokeWidth="5" />
+        <line x1="152" y1="0" x2="146" y2="470" strokeWidth="6" />
+        <line x1="248" y1="0" x2="254" y2="470" strokeWidth="7" />
+        <line x1="336" y1="0" x2="332" y2="470" strokeWidth="5" />
+        <line x1="-20" y1="260" x2="230" y2="0" strokeWidth="4" opacity="0.7" />
+        <line x1="180" y1="470" x2="420" y2="210" strokeWidth="4" opacity="0.7" />
       </g>
-      <g stroke="#2C3E5F" strokeWidth="0.6" opacity="0.6">
-        {Array.from({ length: 19 }).map((_, i) => (
-          <line key={`v${i}`} x1={20 + i * 20} y1="0" x2={20 + i * 20} y2="470" />
-        ))}
-        {Array.from({ length: 22 }).map((_, i) => (
-          <line key={`h${i}`} x1="0" y1={20 + i * 20} x2="400" y2={20 + i * 20} />
-        ))}
+      {/* City blocks — a few soft rounded fills implying land use, the
+          way Apple Maps washes parks/blocks in a faint tint rather than
+          leaving pure void between streets. */}
+      <g opacity="0.5">
+        <rect x="90" y="120" width="46" height="48" rx="9" fill="#151E33" />
+        <rect x="182" y="200" width="52" height="44" rx="9" fill="#151E33" />
+        <rect x="280" y="110" width="42" height="52" rx="9" fill="#131C30" />
+        <rect x="40" y="320" width="50" height="46" rx="9" fill="#141C2F" />
+        <rect x="270" y="330" width="48" height="42" rx="9" fill="#141C2F" />
       </g>
 
-      {showRoute && pickup && dropoff && (
+      {showRoute && routeFrom && routeTo && (
         <g>
-          <path d={routePath} fill="none" stroke="#26334D" strokeWidth="6" strokeLinecap="round" opacity="0.65" />
+          <path d={routePath} fill="none" stroke="#233252" strokeWidth="7" strokeLinecap="round" opacity="0.55" />
           <path d={routePath} fill="none" stroke="url(#fgRoute)" strokeWidth="3.5" strokeLinecap="round" />
         </g>
       )}
 
       {pickup && (
         <g transform={`translate(${pickup.x},${pickup.y})`}>
-          <circle r="12" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity="0.55" />
+          <circle r="12" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity="0.5">
+            <animate attributeName="r" values="9;16;9" dur="2.6s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.55;0.15;0.55" dur="2.6s" repeatCount="indefinite" />
+          </circle>
           <circle r="5" fill="#38BDF8" style={{ filter: 'drop-shadow(0 0 6px #38BDF8)' }} />
         </g>
       )}
@@ -821,17 +904,30 @@ function CyberGridFallback({ showRoute, pickup, dropoff, dropoffLabel, car, rada
       )}
 
       {car && (
-        <g transform={`translate(${car.x},${car.y})`}>
-          <circle r="11" fill="#38BDF8" opacity="0.25" />
-          <rect x="-7" y="-5" width="14" height="10" rx="3.5" fill="#0A0D15" stroke="#38BDF8" strokeWidth="1.8" style={{ filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.95))' }} />
+        <g data-testid="fallback-car" transform={`translate(${car.x},${car.y}) rotate(${carHeadingDeg})`}>
+          <circle r="12" fill="#38BDF8" opacity="0.2" />
+          <polygon
+            points="0,-8 6,7 0,4 -6,7"
+            fill="#0A0D15"
+            stroke="url(#fgRoute)"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 8px rgba(56,189,248,0.9))' }}
+          />
         </g>
       )}
 
       <rect width="400" height="470" fill="url(#fgVignette)" />
 
-      <text x="200" y="455" textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="9" fontWeight="600" letterSpacing="2">
-        OFFLINE MAP MODE
-      </text>
+      {/* A quiet corner mark, not a center-screen apology — this view is
+          a deliberate style, the same way the real map carries a "Live
+          Denver Map" badge in the same spot. */}
+      <g transform="translate(14, 448)" opacity="0.85">
+        <circle cx="0" cy="-3.5" r="3" fill="#38BDF8" />
+        <text x="10" y="0" fill="rgba(255,255,255,0.55)" fontSize="9.5" fontWeight="700" letterSpacing="0.5">
+          Rush Map · Simplified View
+        </text>
+      </g>
     </svg>
   )
 }
