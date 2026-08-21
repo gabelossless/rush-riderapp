@@ -761,6 +761,16 @@ function CyberGridFallback({ showRoute, pickup, dropoff, routeFrom, routeTo, dro
     onMapClick({ lat, lng })
   }
 
+  // A constant heading for the car — the fallback route is one smooth
+  // curve rather than per-segment geometry like the real map's OSRM
+  // route, so the overall origin->destination bearing is a fair
+  // approximation of "which way is the car facing" without needing to
+  // differentiate the bezier at every frame.
+  const carHeadingDeg = useMemo(() => {
+    if (!routeFrom || !routeTo) return 0
+    return (Math.atan2(routeTo.x - routeFrom.x, -(routeTo.y - routeFrom.y)) * 180) / Math.PI
+  }, [routeFrom, routeTo])
+
   return (
     <svg
       viewBox="0 0 400 470"
@@ -779,38 +789,69 @@ function CyberGridFallback({ showRoute, pickup, dropoff, routeFrom, routeTo, dro
           <stop offset="55%" stopColor="#000000" stopOpacity="0" />
           <stop offset="100%" stopColor="#000000" stopOpacity="0.55" />
         </radialGradient>
+        <radialGradient id="fgGround" cx="50%" cy="8%" r="95%">
+          <stop offset="0%" stopColor="#141B2E" />
+          <stop offset="55%" stopColor="#0C1220" />
+          <stop offset="100%" stopColor="#07090F" />
+        </radialGradient>
+        <radialGradient id="fgGlowBlue" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.16" />
+          <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="fgGlowIndigo" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#818CF8" stopOpacity="0.13" />
+          <stop offset="100%" stopColor="#818CF8" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
-      <rect width="400" height="470" fill="#0A0D15" />
-      <g stroke="#33456B" strokeLinecap="round">
-        <line x1="0" y1="120" x2="400" y2="120" strokeWidth="7" />
-        <line x1="0" y1="200" x2="400" y2="200" strokeWidth="9" />
-        <line x1="0" y1="280" x2="400" y2="280" strokeWidth="6" />
-        <line x1="0" y1="360" x2="400" y2="360" strokeWidth="8" />
-        <line x1="80" y1="0" x2="80" y2="470" strokeWidth="7" />
-        <line x1="170" y1="0" x2="170" y2="470" strokeWidth="6" />
-        <line x1="250" y1="0" x2="250" y2="470" strokeWidth="9" />
-        <line x1="340" y1="0" x2="340" y2="470" strokeWidth="6" />
+      {/* Ground — a soft graduated dark field rather than a flat fill,
+          plus two low, wide ambient glows (same blue/indigo pairing as
+          the rest of the app) instead of a literal grid pretending to be
+          graph paper. */}
+      <rect width="400" height="470" fill="url(#fgGround)" />
+      <ellipse cx="90" cy="70" rx="230" ry="170" fill="url(#fgGlowBlue)" />
+      <ellipse cx="330" cy="380" rx="220" ry="190" fill="url(#fgGlowIndigo)" />
+
+      {/* Road network — deliberately irregular block sizes and a couple
+          of diagonals (Denver's own downtown grid runs at an angle to
+          the metro grid), not a uniform lattice. Muted enough to read as
+          structure/context, not as the foreground. */}
+      <g stroke="#26314A" strokeLinecap="round" opacity="0.85">
+        <line x1="0" y1="96" x2="400" y2="96" strokeWidth="5" />
+        <line x1="0" y1="184" x2="400" y2="176" strokeWidth="7" />
+        <line x1="0" y1="298" x2="400" y2="304" strokeWidth="5" />
+        <line x1="0" y1="392" x2="400" y2="388" strokeWidth="6" />
+        <line x1="64" y1="0" x2="64" y2="470" strokeWidth="5" />
+        <line x1="152" y1="0" x2="146" y2="470" strokeWidth="6" />
+        <line x1="248" y1="0" x2="254" y2="470" strokeWidth="7" />
+        <line x1="336" y1="0" x2="332" y2="470" strokeWidth="5" />
+        <line x1="-20" y1="260" x2="230" y2="0" strokeWidth="4" opacity="0.7" />
+        <line x1="180" y1="470" x2="420" y2="210" strokeWidth="4" opacity="0.7" />
       </g>
-      <g stroke="#2C3E5F" strokeWidth="0.6" opacity="0.6">
-        {Array.from({ length: 19 }).map((_, i) => (
-          <line key={`v${i}`} x1={20 + i * 20} y1="0" x2={20 + i * 20} y2="470" />
-        ))}
-        {Array.from({ length: 22 }).map((_, i) => (
-          <line key={`h${i}`} x1="0" y1={20 + i * 20} x2="400" y2={20 + i * 20} />
-        ))}
+      {/* City blocks — a few soft rounded fills implying land use, the
+          way Apple Maps washes parks/blocks in a faint tint rather than
+          leaving pure void between streets. */}
+      <g opacity="0.5">
+        <rect x="90" y="120" width="46" height="48" rx="9" fill="#151E33" />
+        <rect x="182" y="200" width="52" height="44" rx="9" fill="#151E33" />
+        <rect x="280" y="110" width="42" height="52" rx="9" fill="#131C30" />
+        <rect x="40" y="320" width="50" height="46" rx="9" fill="#141C2F" />
+        <rect x="270" y="330" width="48" height="42" rx="9" fill="#141C2F" />
       </g>
 
       {showRoute && routeFrom && routeTo && (
         <g>
-          <path d={routePath} fill="none" stroke="#26334D" strokeWidth="6" strokeLinecap="round" opacity="0.65" />
+          <path d={routePath} fill="none" stroke="#233252" strokeWidth="7" strokeLinecap="round" opacity="0.55" />
           <path d={routePath} fill="none" stroke="url(#fgRoute)" strokeWidth="3.5" strokeLinecap="round" />
         </g>
       )}
 
       {pickup && (
         <g transform={`translate(${pickup.x},${pickup.y})`}>
-          <circle r="12" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity="0.55" />
+          <circle r="12" fill="none" stroke="#38BDF8" strokeWidth="1.2" opacity="0.5">
+            <animate attributeName="r" values="9;16;9" dur="2.6s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.55;0.15;0.55" dur="2.6s" repeatCount="indefinite" />
+          </circle>
           <circle r="5" fill="#38BDF8" style={{ filter: 'drop-shadow(0 0 6px #38BDF8)' }} />
         </g>
       )}
@@ -863,17 +904,30 @@ function CyberGridFallback({ showRoute, pickup, dropoff, routeFrom, routeTo, dro
       )}
 
       {car && (
-        <g data-testid="fallback-car" transform={`translate(${car.x},${car.y})`}>
-          <circle r="11" fill="#38BDF8" opacity="0.25" />
-          <rect x="-7" y="-5" width="14" height="10" rx="3.5" fill="#0A0D15" stroke="#38BDF8" strokeWidth="1.8" style={{ filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.95))' }} />
+        <g data-testid="fallback-car" transform={`translate(${car.x},${car.y}) rotate(${carHeadingDeg})`}>
+          <circle r="12" fill="#38BDF8" opacity="0.2" />
+          <polygon
+            points="0,-8 6,7 0,4 -6,7"
+            fill="#0A0D15"
+            stroke="url(#fgRoute)"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 8px rgba(56,189,248,0.9))' }}
+          />
         </g>
       )}
 
       <rect width="400" height="470" fill="url(#fgVignette)" />
 
-      <text x="200" y="455" textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="9" fontWeight="600" letterSpacing="2">
-        OFFLINE MAP MODE
-      </text>
+      {/* A quiet corner mark, not a center-screen apology — this view is
+          a deliberate style, the same way the real map carries a "Live
+          Denver Map" badge in the same spot. */}
+      <g transform="translate(14, 448)" opacity="0.85">
+        <circle cx="0" cy="-3.5" r="3" fill="#38BDF8" />
+        <text x="10" y="0" fill="rgba(255,255,255,0.55)" fontSize="9.5" fontWeight="700" letterSpacing="0.5">
+          Rush Map · Simplified View
+        </text>
+      </g>
     </svg>
   )
 }
