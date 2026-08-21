@@ -132,6 +132,21 @@
   transform: rotate(45deg);
   box-shadow: 0 0 10px rgba(129, 140, 248, 0.9);
 }
+.rush-dest-label {
+  display: inline-block;
+  max-width: 168px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: rgba(10, 13, 21, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
 .rush-car-arrow {
   position: absolute;
   left: -9px;
@@ -188,7 +203,8 @@
 .rush-surge-ring,
 .rush-surge-core,
 .rush-car-arrow,
-.rush-user-dot {
+.rush-user-dot,
+.rush-dest-label-wrap {
   pointer-events: none;
 }
 

@@ -145,6 +145,7 @@ function MapEngineContent({
   showRoute = false,
   pickupCoords = null,
   dropoffCoords = null,
+  dropoffLabel = null,
   onMapClick,
 }) {
   const containerRef = useRef(null)
@@ -158,6 +159,7 @@ function MapEngineContent({
   const routeCumRef = useRef(null)
   const pickupMarkerRef = useRef(null)
   const dropoffMarkerRef = useRef(null)
+  const dropoffLabelMarkerRef = useRef(null)
   const carMarkerRef = useRef(null)
   const userMarkerRef = useRef(null)
   const radarMarkerRef = useRef(null)
@@ -291,6 +293,13 @@ function MapEngineContent({
 
       dropoffMarkerRef.current = new Marker({
         element: makeMarkerEl('<span class="rush-marker-square"></span>', 'rush-marker dropoff'),
+      }).setLngLat([DENVER_CENTER.lng, DENVER_CENTER.lat]).addTo(map)
+
+      // Destination name label, floating above the dropoff pin.
+      dropoffLabelMarkerRef.current = new Marker({
+        element: makeMarkerEl('<span class="rush-dest-label"></span>', 'rush-dest-label-wrap'),
+        anchor: 'bottom',
+        offset: [0, -16],
       }).setLngLat([DENVER_CENTER.lng, DENVER_CENTER.lat]).addTo(map)
 
       carMarkerRef.current = new Marker({
@@ -468,14 +477,24 @@ function MapEngineContent({
     if (pickupCoords) pickupMarkerRef.current?.setLngLat([pickupCoords.lng, pickupCoords.lat])
     const dropEl = dropoffMarkerRef.current?.getElement()
     const carEl = carMarkerRef.current?.getElement()
+    const labelEl = dropoffLabelMarkerRef.current?.getElement()
     if (dropoffCoords && showRoute) {
       dropoffMarkerRef.current?.setLngLat([dropoffCoords.lng, dropoffCoords.lat])
       if (dropEl) dropEl.style.display = 'block'
-    } else if (dropEl) {
-      dropEl.style.display = 'none'
+      if (dropoffLabel) {
+        dropoffLabelMarkerRef.current?.setLngLat([dropoffCoords.lng, dropoffCoords.lat])
+        const span = labelEl?.querySelector('.rush-dest-label')
+        if (span) span.textContent = dropoffLabel
+        if (labelEl) labelEl.style.display = 'block'
+      } else if (labelEl) {
+        labelEl.style.display = 'none'
+      }
+    } else {
+      if (dropEl) dropEl.style.display = 'none'
+      if (labelEl) labelEl.style.display = 'none'
     }
     if (!showRoute && carEl) carEl.style.display = 'none'
-  }, [map, mapState, pickupKey, dropoffKey, showRoute]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, mapState, pickupKey, dropoffKey, showRoute, dropoffLabel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---------- Car animation along the real route ---------- */
   useEffect(() => {
@@ -613,6 +632,7 @@ function MapEngineContent({
           showRoute={showRoute}
           pickup={fallbackPickup}
           dropoff={fallbackDropoff}
+          dropoffLabel={dropoffLabel}
           car={fallbackCar}
           radar={radar}
           onMapClick={onMapClick}
@@ -676,7 +696,7 @@ function projectToGrid(lat, lng) {
 /*  Offline/WebGL fallback — simplified Denver grid                    */
 /* ------------------------------------------------------------------ */
 
-function CyberGridFallback({ showRoute, pickup, dropoff, car, radar, onMapClick }) {
+function CyberGridFallback({ showRoute, pickup, dropoff, dropoffLabel, car, radar, onMapClick }) {
   const routePath = useMemo(() => {
     if (!pickup || !dropoff) return ''
     const x1 = pickup.x, y1 = pickup.y, x2 = dropoff.x, y2 = dropoff.y
@@ -757,6 +777,36 @@ function CyberGridFallback({ showRoute, pickup, dropoff, car, radar, onMapClick 
         <g transform={`translate(${dropoff.x},${dropoff.y})`}>
           <rect x="-6" y="-6" width="12" height="12" rx="2.5" fill="#A86BFF" transform="rotate(45)" style={{ filter: 'drop-shadow(0 0 6px #818CF8)' }} />
         </g>
+      )}
+
+      {/* Destination name label, floating above the dropoff pin — matches
+          the real-map version, since this fallback is what actually
+          renders on networks that can't reach the tile host. */}
+      {showRoute && dropoff && dropoffLabel && (
+        <foreignObject x={dropoff.x - 84} y={dropoff.y - 40} width="168" height="28" style={{ overflow: 'visible' }}>
+          <div
+            xmlns="http://www.w3.org/1999/xhtml"
+            style={{
+              width: 'fit-content',
+              maxWidth: 168,
+              margin: '0 auto',
+              padding: '4px 9px',
+              borderRadius: 8,
+              background: 'rgba(10,13,21,0.92)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#fff',
+              fontSize: 10.5,
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+              textAlign: 'center',
+            }}
+          >
+            {dropoffLabel}
+          </div>
+        </foreignObject>
       )}
 
       {radar && pickup && (
