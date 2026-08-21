@@ -49,6 +49,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
             </div>
             <button
               onClick={onClose}
+              aria-label="Close feedback"
               className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 hover:text-white"
             >
               <X size={16} />

@@ -227,6 +227,16 @@ export function TripProvider({ children }) {
     return completedEntry
   }, [])
 
+  // Tips are chosen on the Trip Completed screen, after completeRide()
+  // already wrote the trip's history entry — so the tip has to be patched
+  // onto that entry after the fact, or trip history and the wallet's
+  // activity feed would silently disagree with what the rider was actually
+  // charged.
+  const recordTip = useCallback((tripId, amount) => {
+    if (!tripId || !amount) return
+    setTripHistory((prev) => prev.map((t) => (t.id === tripId ? { ...t, tip: amount } : t)))
+  }, [])
+
   return (
     <TripContext.Provider
       value={{
@@ -239,6 +249,7 @@ export function TripProvider({ children }) {
         startRide,
         updateProgress,
         completeRide,
+        recordTip,
       }}
     >
       {children}

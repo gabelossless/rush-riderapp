@@ -68,6 +68,7 @@ export default function AccountModal({ isOpen, onClose }) {
                   triggerHaptic('light')
                   onClose()
                 }}
+                aria-label="Close account"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 transition-colors hover:text-white"
               >
                 <X size={16} />

@@ -220,7 +220,17 @@ function BottomNav({ onOpenWallet, onOpenHistory, onOpenFeedback }) {
 
 function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const { user, deductRiderFare } = useAuth()
-  const { currentTrip, tripHistory, requestRide, cancelRequest, acceptRide, startRide, completeRide, updateProgress } = useTrip()
+  const {
+    currentTrip,
+    tripHistory,
+    requestRide,
+    cancelRequest,
+    acceptRide,
+    startRide,
+    completeRide,
+    updateProgress,
+    recordTip,
+  } = useTrip()
   const timers = useTimeout()
 
   const prevTripId = useRef(null)
@@ -424,6 +434,16 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
   const finishCompleted = () => {
     triggerHaptic('success')
+    // The base fare is already deducted the moment the trip completes (see
+    // the effect above) — before the rider ever sees this tip picker. The
+    // tip itself is only ever chosen here, so it has to be settled here too,
+    // or "Total Paid" on this screen is a number that was never actually
+    // charged. 100% of the tip goes to the driver on real platforms (unlike
+    // the base fare, it isn't subject to the FairFare platform cut).
+    if (tip > 0) {
+      deductRiderFare(tip, { countsAsRide: false })
+      if (lastCompleted?.id) recordTip(lastCompleted.id, tip)
+    }
     setStage('home')
     setTip(null)
     setRating(0)

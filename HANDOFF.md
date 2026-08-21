@@ -1,12 +1,14 @@
 # 🤝 Agent Handoff & Project Status Report
 
 **Repository**: [github.com/gabelossless/rush-riderapp](https://github.com/gabelossless/rush-riderapp)
-**Status**: 🟢 `main` at `2d419c5` (PRs [#7](https://github.com/gabelossless/rush-riderapp/pull/7) and [#8](https://github.com/gabelossless/rush-riderapp/pull/8) merged). Branch
-`claude/ride-demo-maps-visuals-6wgly0` carries three more commits on top, in
-[PR #9](https://github.com/gabelossless/rush-riderapp/pull/9) — the
-two-leg trip animation, the nav/map/safety redesign, and this
-documentation pass, all detailed at the bottom of this file. Lint clean,
-47/47 tests across 5 files, build succeeds.
+**Status**: 🟢 `main` at `d6016db` (PRs [#7](https://github.com/gabelossless/rush-riderapp/pull/7),
+[#8](https://github.com/gabelossless/rush-riderapp/pull/8), and
+[#9](https://github.com/gabelossless/rush-riderapp/pull/9) merged — two-leg
+trip animation, nav/map/safety redesign, MVP roadmap). Branch
+`claude/ride-demo-maps-visuals-6wgly0` carries one more commit on top, not
+yet in a PR: a post-merge polish pass (fallback-map pin clipping, tip
+charging, accessibility labels — see entry 21 at the bottom of this file).
+Lint clean, 47/47 tests across 5 files, build succeeds.
 **Also see**: [`ROADMAP.md`](ROADMAP.md) — the demo→MVP transition plan
 (what already transfers to production, what's demo-only and has to be
 rebuilt, and a phased plan starting with the ride/customer experience).
@@ -345,6 +347,84 @@ risk here is low, but a live-network check on the deployed preview is
 still the more complete verification).
 
 Lint clean, 47/47 tests, build succeeds.
+
+---
+
+21. **Post-merge polish pass** — after PR #9 merged, took a fresh round of
+    Playwright screenshots across the full rider flow (edge-case address
+    search, rapid taps, small/tall viewports, every modal) specifically
+    hunting for bugs rather than confirming known-good states. Found and
+    fixed three real ones:
+    - **Fallback map: two of six preset destination pins were rendering
+      off-screen.** The `CyberGridFallback` SVG uses
+      `preserveAspectRatio="xMidYMid slice"` (cover behavior) so it fills
+      any viewport without letterboxing — but on a typical tall/narrow
+      phone screen that crops roughly the outer 20% off each horizontal
+      edge, and `projectToGrid()` was mapping the full Denver bounding box
+      edge-to-edge across the SVG's entire width with only a 20px margin.
+      Measured live: **Denver International Airport**'s dropoff pin
+      rendered at x=389–418 on a 390px-wide viewport — 97% of it past the
+      right edge. Red Rocks Amphitheatre sat right at the opposite
+      boundary. Fixed by widening `projectToGrid`/`projectToGridInverse`'s
+      margin/scale (`GRID_X_MARGIN`/`GRID_X_SCALE` in
+      [`MapEngine.jsx`](src/components/MapEngine.jsx)) so every preset
+      destination lands with real headroom inside the band that survives
+      the crop, in-town points barely moving. Verified live: DIA's pin now
+      renders fully at x=347–376.
+    - **The fallback map's own corner badge had the identical bug** — "Rush
+      Map · Simplified View" was drawn inside the same cropped SVG
+      coordinate space, so roughly the first third of the string ("Rush
+      Map") was invisible, leaving a stray "· Simplified View" with no
+      antecedent. Moved it out of the SVG entirely into a normal
+      `absolute bottom-4 left-4` HTML overlay — the same technique the
+      real map's own "Live Denver Map" badge already used — so it's flush
+      to the actual screen edge regardless of the SVG's internal crop.
+    - **Tipping was entirely cosmetic — no money ever moved.** The
+      completed-trip screen's tip selector (including the $2/$5/$10
+      presets, not just the custom-amount field) only ever changed the
+      displayed "Total Paid" number; `tip` state was never passed to
+      `deductRiderFare`, never credited to the driver, and never attached
+      to the trip's history record. A rider could select a $10 tip, submit,
+      and their wallet balance — checkable one tap away in the same
+      session — would be unchanged. Fixed in three places: `finishCompleted`
+      in [`App.jsx`](src/App.jsx) now calls `deductRiderFare(tip, {
+      countsAsRide: false })` when the rider submits (the `countsAsRide`
+      flag is new on `deductRiderFare` in
+      [`AuthContext.jsx`](src/context/AuthContext.jsx) — it also increments
+      `totalRides`, which the base fare already does once per trip, so a
+      second call for the tip needed to opt out or every trip would count
+      twice); a new `recordTip(tripId, amount)` action in
+      [`TripContext.jsx`](src/context/TripContext.jsx) patches the tip onto
+      the trip's already-written history entry, since the tip is chosen
+      *after* `completeRide()` runs; and both
+      [`WalletModal.jsx`](src/components/WalletModal.jsx)'s activity feed
+      and [`HistoryModal.jsx`](src/components/HistoryModal.jsx)'s per-trip
+      receipt now fold the tip in — 100% to the driver, no platform cut,
+      unlike the base fare's 88/12 split (`HistoryModal`'s summary total
+      keeps fare and tip sums separate internally for exactly this reason;
+      combining them before applying `DRIVER_PCT` would have taxed the
+      tip too). Verified live end-to-end: submitted a $10 tip, wallet
+      balance dropped by exactly $10, `totalRides` didn't double-count,
+      and the trip shows up in both History ("$23.74", tip line itemized)
+      and Wallet ("-$23.74 · incl. $10.00 tip") correctly reconciled.
+    - **Accessibility: every icon-only dismiss/back button in the app had
+      zero accessible name** — not a regression from this session, a
+      pre-existing gap across the whole codebase, discovered because a
+      Playwright `getByLabel('Close...')` call couldn't find the Safety
+      Sheet's close button. Added `aria-label` to all nine: the close (✕)
+      buttons on `AccountModal`, `FeedbackModal`, `HistoryModal`,
+      `WalletModal`, `SafetySheet`, and `PWAInstallPrompt`'s dismiss; the
+      back (‹) buttons on `LocationSearch`, `RideConfirmSheet`, and
+      `SignUpFlow`; and `LocationSearch`'s destination-clear button. A
+      screen-reader user previously had no way to know what any of these
+      nine buttons did.
+
+    All three fixes verified with fresh Playwright runs reading
+    `localStorage` ground truth (trip status, `tripHistory`, wallet
+    balance) alongside screenshots — not scraped UI text, per the standing
+    lesson from earlier in this project. Lint clean, 47/47 tests, build
+    succeeds. **Not yet in a PR** — sitting on
+    `claude/ride-demo-maps-visuals-6wgly0` as of this writing.
 
 ---
 

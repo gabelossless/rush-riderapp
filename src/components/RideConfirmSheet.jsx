@@ -51,6 +51,7 @@ export default function RideConfirmSheet({
             triggerHaptic('light')
             onBack()
           }}
+          aria-label="Back"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
         >
           <ChevronLeft size={17} />

@@ -172,7 +172,11 @@ export function AuthProvider({ children }) {
     }))
   }
 
-  const deductRiderFare = (amount) => {
+  // countsAsRide=false is for charges that happen after the ride itself was
+  // already counted — a tip, chosen on the Trip Completed screen after the
+  // base fare (and totalRides) was already settled the moment the trip
+  // ended. Without this, tipping would double-count the same trip.
+  const deductRiderFare = (amount, { countsAsRide = true } = {}) => {
     if (!user) return
     setUser((prev) => {
       let nextBalance = Math.max(0, (prev.walletBalance || 0) - amount)
@@ -184,7 +188,7 @@ export function AuthProvider({ children }) {
       return {
         ...prev,
         walletBalance: nextBalance,
-        totalRides: (prev.totalRides || 0) + 1,
+        totalRides: countsAsRide ? (prev.totalRides || 0) + 1 : prev.totalRides,
       }
     })
   }
