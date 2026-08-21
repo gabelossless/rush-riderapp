@@ -178,6 +178,73 @@ correct coordinates on a phone.
     `text-white/40` on `bg-white/[0.03]`, low enough contrast to hurt
     readability; bumped to `/55`.
 
+### Latest session — two-leg trip animation (driver → pickup → dropoff)
+
+17. **The car never actually approached pickup.** User asked to verify:
+    select a destination (Ball Arena), request a ride — does the car/driver
+    visibly move from the driver's own location to pickup, then to dropoff?
+    It didn't. `carProgress` only ever animated a single OSRM route
+    (pickup → dropoff), and the progress ticker (`src/App.jsx`) only ran
+    during `IN_PROGRESS` — during `ACCEPTED` ("Driver En Route", ~5s in the
+    auto-lifecycle) the car sat completely still despite the UI claiming
+    the driver was approaching. Also found a related honesty bug: the
+    driver's incoming-request card ("Rider is X mi away") used the trip's
+    *total* pickup→dropoff distance, not the actual driver-to-pickup
+    distance.
+    - **`src/utils/geocode.js`**: added `offsetLatLng(center, miles,
+      bearingDeg)` — the great-circle inverse of the existing
+      `haversineMiles`.
+    - **`src/context/TripContext.jsx`**: `requestRide` now calls
+      `simulateDriverApproach(pickupCoords)` — stands in for "dispatch
+      already knows nearby driver positions when broadcasting an offer" (no
+      second device to read real GPS from in a demo) — picking a random
+      point 0.6–2.8mi from pickup and storing `driverStartCoords` +
+      honest `pickupDistance`/`pickupEta` labels on the trip, computed from
+      that same simulated point so the numbers can never contradict each
+      other. `acceptRide` keeps a defensive fallback only for a trip
+      persisted before this field existed.
+    - **`src/App.jsx`**: the progress ticker now runs during `ACCEPTED` too
+      (not just `IN_PROGRESS`) — same `currentTrip.progress` field, same
+      ticker, drives both legs; `acceptRide`/`startRide` each reset it to 0
+      for their leg. The auto-advance effect's `ACCEPTED` branch changed
+      from a fixed 3500ms timer to `tripStatus === 'ACCEPTED' &&
+      tripProgress >= 1` — progress-gated exactly like completion already
+      was, so "driver arrived" now means the car actually reached the pin,
+      not an arbitrary duration. Computed `mapRouteOrigin`/
+      `mapRouteDestination` per view (driver's own `driverStartCoords` →
+      pickup while `ACCEPTED`, pickup → dropoff otherwise) and threaded
+      them into both `<MapShell>` call sites (rider's and driver's own map
+      read the same simulated position). Fixed the "Rider is X away" card
+      to use the new `pickupDistance`/`pickupEta` fields.
+    - **`src/components/MapEngine.jsx`**: added `routeOrigin`/
+      `routeDestination` props (default to `pickupCoords`/`dropoffCoords`,
+      so any caller not passing them keeps the old single-route behavior)
+      — the OSRM fetch, car animation, and ETA HUD all key off these now,
+      while `pickupCoords`/`dropoffCoords` continue to place the pickup/
+      dropoff pins regardless of which leg is animating. Same split
+      applied to the offline SVG fallback (`routeFrom`/`routeTo` vs
+      `pickup`/`dropoff`), since that's what actually renders on networks
+      that can't reach the tile/OSRM hosts (including this sandbox). ETA
+      HUD gained a "To pickup" / "To destination" label so it's clear
+      which leg it's tracking.
+    - Added **Ball Arena** as a real preset destination
+      (`src/data/mockData.js`) — the user's own example, and genuinely
+      useful Denver venue coverage.
+    - **Verified live**, not just reasoned through: a scripted Playwright
+      run against the offline fallback (this sandbox blocks the tile/OSRM
+      hosts) read the actual `<g data-testid="fallback-car">` SVG
+      transform and `localStorage`'s trip state directly (not scraped UI
+      text — first pass used text matching and got a false-positive on an
+      always-rendered checklist label, corrected to ground-truth state).
+      Confirmed: `driverStartCoords` generated ~1.6mi from pickup; car
+      genuinely moves during the approach leg (progress 0→0.33 over 2s,
+      position delta ~4.6px); car visibly resets/snaps to the pickup point
+      when leg 2 begins (9.7px jump); `dropoffCoords` correctly resolved
+      to Ball Arena's real coordinates; leg 2 animates correctly; full
+      trip still completes end-to-end (no regression of the earlier
+      livelock fix). Added `data-testid="fallback-car"` to the fallback's
+      car `<g>` purely as a test hook — no visual/behavioral change.
+
 ---
 
 ## 🧩 Current Architecture

@@ -280,11 +280,16 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     }
   }, [currentTrip, stage, tripHistory, deductRiderFare])
 
+  // Ticks currentTrip.progress 0->1 while a leg is actively driving — the
+  // same field/ticker drives both legs (ACCEPTED = driver -> pickup,
+  // IN_PROGRESS = pickup -> dropoff); acceptRide()/startRide() each reset
+  // it to 0 for their leg. This is what actually moves the car marker on
+  // the map, via carProgress -> MapEngine.
   useEffect(() => {
     let timeout
-    if (currentTrip?.status === 'IN_PROGRESS') {
+    if (currentTrip?.status === 'ACCEPTED' || currentTrip?.status === 'IN_PROGRESS') {
       timeout = setTimeout(() => {
-        updateProgress(Math.min(1, (currentTrip.progress || 0.1) + 0.015))
+        updateProgress(Math.min(1, (currentTrip.progress || 0) + 0.015))
       }, 80)
     }
     return () => clearTimeout(timeout)
@@ -370,15 +375,20 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
     if (tripStatus === 'SEARCHING') {
       // Match a demo driver after a short realistic wait.
       t = setTimeout(() => acceptRide(DEMO_DRIVER), 2500)
-    } else if (tripStatus === 'ACCEPTED') {
-      // Simulate: driver en route, then pickup, then begin the trip.
+    } else if (tripStatus === 'ACCEPTED' && tripProgress >= 1) {
+      // Driver's car has actually reached the pickup pin (see the progress
+      // ticker above) — a short settle beat, then "hop in", then leg 2
+      // (pickup -> dropoff) begins. Progress-gated the same way completion
+      // is below, instead of a fixed timer, so the notification always
+      // lines up with the car visibly arriving rather than an arbitrary
+      // duration that happened to look right.
       t = setTimeout(() => {
         setDemoNotification('Marcus is here — hop in!')
         setTimeout(() => {
           setDemoNotification(null)
           startRide()
         }, 1800)
-      }, 3500)
+      }, 400)
     } else if (tripStatus === 'IN_PROGRESS' && tripProgress >= 1) {
       // Auto-complete once the car animation reaches the destination.
       t = setTimeout(() => {
@@ -418,6 +428,14 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
 
   const walkingNote = pickup === 'Current Location' ? '~2 min walk' : 'At pin'
 
+  // Which leg of the trip the map/car should currently be showing: while
+  // the driver is en route to pickup, the active route is driver -> pickup
+  // (not the trip's overall pickup -> dropoff); pickup/dropoff pins stay
+  // visible throughout regardless of which leg is animating.
+  const isApproachingPickup = tripStatus === 'ACCEPTED'
+  const mapRouteOrigin = isApproachingPickup ? currentTrip?.driverStartCoords || pickupCoords : pickupCoords
+  const mapRouteDestination = isApproachingPickup ? pickupCoords : dropoffCoords
+
   return (
     <div className="relative h-full">
       {/* Dynamic Demo Banner Notification */}
@@ -445,6 +463,8 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           showRoute={stage !== 'home'}
           pickupCoords={pickupCoords}
           dropoffCoords={dropoffCoords}
+          routeOrigin={mapRouteOrigin}
+          routeDestination={mapRouteDestination}
           // Only on the confirm screen — during searching/matched a
           // centered card already occupies the same part of the map for
           // nearby pickup/dropoff pairs, and the label just clutters
@@ -702,8 +722,11 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                 })}
               </div>
 
-              {/* In-ride progress bar (visible while IN_PROGRESS) */}
-              {currentTrip.status === 'IN_PROGRESS' && (
+              {/* Progress bar — driver approaching pickup, then the trip
+                  itself; same bar, same currentTrip.progress field drives
+                  both (see the ticker effect above), just two different
+                  legs of one continuous "car is moving" story. */}
+              {(currentTrip.status === 'ACCEPTED' || currentTrip.status === 'IN_PROGRESS') && (
                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full w-full max-w-full rounded-full bg-gradient-to-r from-[#38BDF8] to-[#818CF8] transition-all"
@@ -979,14 +1002,28 @@ function DriverViewContent({ onImmersiveChange }) {
     timers.set(() => setToast(null), 3500)
   }
 
+  // Same leg logic as the passenger view — the driver's own map should
+  // show them approaching pickup first, then driving to dropoff, not the
+  // whole trip route the entire time. Both views read the same
+  // driverStartCoords, so rider and driver see one consistent picture.
+  const driverPickupCoords = currentTrip?.pickupCoords || SAVED_PLACES[0].latlng
+  const driverDropoffCoords = currentTrip?.dropoffCoords || PRESET_DESTINATIONS[0].latlng
+  const isApproachingPickup = currentTrip?.status === 'ACCEPTED'
+  const mapRouteOrigin = isApproachingPickup
+    ? currentTrip?.driverStartCoords || driverPickupCoords
+    : driverPickupCoords
+  const mapRouteDestination = isApproachingPickup ? driverPickupCoords : driverDropoffCoords
+
   return (
     <div className="relative h-full overflow-y-auto no-scrollbar">
       <div className="absolute inset-0">
         <MapShell
           showRoute={Boolean(currentTrip)}
           radar={online && !currentTrip}
-          pickupCoords={currentTrip?.pickupCoords || SAVED_PLACES[0].latlng}
-          dropoffCoords={currentTrip?.dropoffCoords || PRESET_DESTINATIONS[0].latlng}
+          pickupCoords={driverPickupCoords}
+          dropoffCoords={driverDropoffCoords}
+          routeOrigin={mapRouteOrigin}
+          routeDestination={mapRouteDestination}
           dropoffLabel={currentTrip?.destination || PRESET_DESTINATIONS[0].name}
           carProgress={currentTrip?.progress || 0}
         />
@@ -1053,8 +1090,8 @@ function DriverViewContent({ onImmersiveChange }) {
               <p className="truncate text-[11px] text-white/60">Pickup: {currentTrip.pickup}</p>
               <p className="truncate text-[11px] text-white/60">Dropoff: {currentTrip.destination}</p>
               <p className="mt-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold text-[#38BDF8]">
-                <Navigation size={11} /> Rider is {currentTrip.distance || '2.1 mi'} away — about{' '}
-                {currentTrip.eta || '2–5 min'} drive to pickup
+                <Navigation size={11} /> Pickup is {currentTrip.pickupDistance || '2.1 mi'} away — about{' '}
+                {currentTrip.pickupEta || '2–5 min'} drive
               </p>
             </div>
 

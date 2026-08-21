@@ -1,10 +1,35 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { INITIAL_TRIP_HISTORY } from '../data/mockData'
+import { offsetLatLng } from '../utils/geocode'
 
 const TripContext = createContext(null)
 
 const TRIP_STATE_KEY = 'rush_current_trip_state'
 const TRIP_HISTORY_KEY = 'rush_trip_history'
+
+// A real driver app reports live GPS; this demo has no second device to
+// read a position from, so "acceptRide" stands up a plausible one —
+// somewhere 0.6-2.8mi from pickup in a random direction, matching the
+// "2-5 min drive" honesty pattern already used elsewhere in the app. Both
+// the rider's map and the driver's own map read this same simulated
+// position, so — like a real backend would — every client sees one
+// consistent truth rather than each view inventing its own.
+const DRIVER_APPROACH_MIN_MI = 0.6
+const DRIVER_APPROACH_MAX_MI = 2.8
+const DRIVER_APPROACH_AVG_MPH = 22
+
+function simulateDriverApproach(pickupCoords) {
+  if (!pickupCoords) return null
+  const distanceMiles = DRIVER_APPROACH_MIN_MI + Math.random() * (DRIVER_APPROACH_MAX_MI - DRIVER_APPROACH_MIN_MI)
+  const bearingDeg = Math.random() * 360
+  const coords = offsetLatLng(pickupCoords, distanceMiles, bearingDeg)
+  const etaMin = Math.max(1, Math.round((distanceMiles / DRIVER_APPROACH_AVG_MPH) * 60))
+  return {
+    coords,
+    distanceLabel: `${distanceMiles.toFixed(1)} mi`,
+    etaLabel: `${etaMin} min`,
+  }
+}
 
 export function TripProvider({ children }) {
   const isStaleTrip = (t) => {
@@ -105,6 +130,14 @@ export function TripProvider({ children }) {
   // trip's data (completeRide), read `currentTripRef.current`.
   const requestRide = useCallback(
     ({ pickup, destination, tier, fare, eta, distance, riderName, pickupCoords, dropoffCoords }) => {
+      // Simulated now, not on accept: a real dispatch system already knows
+      // roughly where nearby driver positions are the moment it broadcasts
+      // an offer — that's what lets a driver's app show "2.1 mi away" on
+      // the incoming request card *before* they've tapped Accept. Doing it
+      // here means that number is set once and stays consistent from the
+      // driver's offer card through to the actual pickup-leg animation,
+      // rather than changing when the driver accepts.
+      const approach = simulateDriverApproach(pickupCoords)
       const newRequest = {
         id: `req_${Date.now()}`,
         status: 'SEARCHING', // SEARCHING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
@@ -121,6 +154,9 @@ export function TripProvider({ children }) {
         createdAt: new Date().toISOString(),
         progress: 0,
         driver: null,
+        driverStartCoords: approach?.coords || null,
+        pickupDistance: approach?.distanceLabel || distance || '2.4 mi',
+        pickupEta: approach?.etaLabel || eta || '8 min',
       }
       setCurrentTrip(newRequest)
       return newRequest
@@ -137,21 +173,28 @@ export function TripProvider({ children }) {
   }, [])
 
   const acceptRide = useCallback((driverInfo) => {
-    setCurrentTrip((prev) =>
-      prev
-        ? {
-            ...prev,
-            status: 'ACCEPTED',
-            driver: driverInfo || {
-              name: 'Marcus Vance',
-              car: 'Tesla Model Y — Matte Black',
-              plate: 'RUSH-88',
-              rating: 4.98,
-              initials: 'MV',
-            },
-          }
-        : prev
-    )
+    setCurrentTrip((prev) => {
+      if (!prev) return prev
+      // requestRide already computed the approach; this fallback only
+      // matters for a trip persisted before that existed (e.g. a stale
+      // localStorage entry from an older build reloaded mid-flight).
+      const approach = prev.driverStartCoords ? null : simulateDriverApproach(prev.pickupCoords)
+      return {
+        ...prev,
+        status: 'ACCEPTED',
+        progress: 0, // leg 1 (driver -> pickup) starts fresh
+        driverStartCoords: prev.driverStartCoords || approach?.coords || null,
+        pickupDistance: prev.pickupDistance || approach?.distanceLabel || prev.distance,
+        pickupEta: prev.pickupEta || approach?.etaLabel || prev.eta,
+        driver: driverInfo || {
+          name: 'Marcus Vance',
+          car: 'Tesla Model Y — Matte Black',
+          plate: 'RUSH-88',
+          rating: 4.98,
+          initials: 'MV',
+        },
+      }
+    })
   }, [])
 
   const startRide = useCallback(() => {
