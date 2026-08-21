@@ -36,6 +36,12 @@ Unlike legacy platforms taking up to 45%–55% commission, Rush features an ultr
 ### 🧭 3b. Driver Navigation Handoff
 Rush doesn't reinvent turn-by-turn — it hands off to what drivers already trust. The active-trip card gives drivers one-tap **"Google Maps"** / **"Waze"** buttons that deep-link straight into their own phone's app with the real pickup or dropoff coordinates, switching automatically as the trip moves from "en route to pickup" to "driving to dropoff."
 
+### 🚗 3c. Two-Leg Trip Animation
+The car on screen doesn't just animate pickup → dropoff — it genuinely moves through the whole trip: a simulated driver starting position (0.6–2.8mi from pickup, standing in for real driver GPS) animates toward the pickup pin first, "arrives" once it actually gets there (not on a fixed timer), then resets and animates pickup → destination. Honest distance/ETA ("Pickup is 1.6 mi away — about 4 min drive") shown to the driver is computed from that same simulated position, so the numbers can't contradict each other.
+
+### 🛡️ 3d. Real Safety Access
+A shield icon on every active-trip screen (rider and driver) opens two things that actually work, not a decorative menu: a **Call 911** link that opens the real phone dialer, and **Share trip status**, which hands the driver's name, plate, and route to someone the rider trusts via the native share sheet (with a clipboard fallback).
+
 ### 📱 4. Native-Grade Mobile PWA UX
 * **Tactile Haptic Vibrations**: Haptic feedback (`navigator.vibrate`) on tab switches, ride option selection, preset taps, and wallet transactions.
 * **Safe Area Insets (`env(safe-area-inset)`)**: Responsive layout designed for iOS notches, Dynamic Island, and Android gesture navigation bars.
@@ -92,16 +98,28 @@ npm test -- --run
 1. **Sign In**:
    * Every visitor lands on the welcome screen first. Tap **Explore the Demo** for one-tap preset accounts — **Alex Rivera** (Rider) or **Marcus Vance** (Driver) — or enter an email to walk the real sign-up flow (`alex.rider@rushtest.com` / `marcus.driver@rushtest.com` are recognized "welcome back" accounts; any other email creates a fresh one).
 2. **Book a Ride (Passenger View)**:
-   * Tap **"Where to?"**, then pick a saved place, a recent trip, or search a Denver destination (Union Station, DIA, Red Rocks, Cherry Creek…).
+   * Tap **"Where to?"**, then pick a saved place, a recent trip, search a Denver destination (Union Station, DIA, Red Rocks, Cherry Creek, Ball Arena…), or type any real address.
    * On the **Confirm** sheet, the price for the pre-selected **Rush Standard** tier is front and center — tap **Change** to compare Rush Express / Rush XL, or the **FairFare** chip to see the 88/12 payout split.
    * Tap **Request Rush Standard**.
-3. **Driver Auto-Match / Live Toggle**:
-   * On the searching screen, tap **⚡ Auto-Match Demo Driver** for instant 1-person testing, OR toggle the header pill to **Driver** mode to accept the request live.
+3. **Watch the Ride, or Take It Over as the Driver**:
+   * The trip auto-advances on its own — matched with a driver, the driver's car animates toward pickup, arrives, then drives to your destination — no buttons required to watch it happen.
+   * Or toggle the header pill to **Driver** mode at any point to accept and run the same trip live from the driver's side, including the **Google Maps/Waze** navigation handoff.
 4. **Complete Trip & Check Wallet**:
-   * Tap **Start Ride Demo**, then **Complete Ride**.
+   * The trip auto-completes once the car reaches the destination — rate the driver, add a tip (including a custom amount).
    * Open **Wallet** from bottom navigation to view test balances and instant deposit refills ($25, $50, $100).
+5. **Safety, anytime during an active trip**:
+   * Tap the shield icon next to the fare for a real **Call 911** link and a **Share trip status** action.
 
 See [DEMO_GUIDE.md](./DEMO_GUIDE.md) for the full walkthrough, including the driver-side flow and a test checklist.
+
+---
+
+## 🗺️ Where This Is Headed
+
+Rush is an investor demo today — no backend, no real accounts, everything
+runs client-side. [`ROADMAP.md`](./ROADMAP.md) is an honest assessment of
+what already transfers to a real MVP versus what has to be rebuilt, and a
+phased plan that puts the ride/customer experience first.
 
 ---
 
