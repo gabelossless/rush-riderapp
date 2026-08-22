@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { INITIAL_TRIP_HISTORY } from '../data/mockData'
-import { offsetLatLng } from '../utils/geocode'
+import { haversineMiles, offsetLatLng } from '../utils/geocode'
 
 const TripContext = createContext(null)
 
@@ -26,9 +26,40 @@ function simulateDriverApproach(pickupCoords) {
   const etaMin = Math.max(1, Math.round((distanceMiles / DRIVER_APPROACH_AVG_MPH) * 60))
   return {
     coords,
+    distanceMiles,
     distanceLabel: `${distanceMiles.toFixed(1)} mi`,
     etaLabel: `${etaMin} min`,
   }
+}
+
+// The on-screen drive (driver -> pickup -> dropoff) is deliberately
+// compressed into a short, watchable window rather than running at the
+// pace the real ETA/distance implies (a real DIA trip is ~40 minutes) —
+// but it still scales a little with actual distance, so a two-block hop
+// doesn't play at the same speed as a trip to the airport.
+//
+// DEMO_MIN_MS/DEMO_MAX_MS bound only the two driving legs, not the whole
+// ride — App.jsx adds ~2.5s of SEARCHING before ACCEPTED (the demo's
+// auto-match timer) plus ~2.2s "driver arrived, hop in" and ~0.6s "trip
+// complete" settle beats between legs, about 5.3s of fixed overhead
+// outside this function's control. These two constants are sized so that
+// fixed overhead + both legs lands the *whole* ride, request to
+// completion, in roughly a 10-20s window — not just the driving part.
+const DEMO_FIXED_OVERHEAD_MS = 5300
+const DEMO_MIN_MS = 10000 - DEMO_FIXED_OVERHEAD_MS
+const DEMO_MAX_MS = 20000 - DEMO_FIXED_OVERHEAD_MS
+const DEMO_MS_PER_MILE = 400
+const DEMO_MIN_LEG_MS = 2000
+
+function demoLegDurations(approachMiles, tripMiles) {
+  const leg1 = approachMiles || DRIVER_APPROACH_MIN_MI
+  const leg2 = tripMiles || 2.5
+  const totalMiles = leg1 + leg2
+  const totalMs = Math.min(DEMO_MAX_MS, Math.max(DEMO_MIN_MS, DEMO_MIN_MS + totalMiles * DEMO_MS_PER_MILE))
+  const rawLeg1Ms = totalMs * (leg1 / totalMiles)
+  const driverApproachDurationMs = Math.min(totalMs - DEMO_MIN_LEG_MS, Math.max(DEMO_MIN_LEG_MS, rawLeg1Ms))
+  const tripDurationMs = totalMs - driverApproachDurationMs
+  return { driverApproachDurationMs, tripDurationMs }
 }
 
 export function TripProvider({ children }) {
@@ -138,6 +169,11 @@ export function TripProvider({ children }) {
       // driver's offer card through to the actual pickup-leg animation,
       // rather than changing when the driver accepts.
       const approach = simulateDriverApproach(pickupCoords)
+      // Straight-line, not the routed distance — this only feeds the demo's
+      // animation-speed curve (see demoLegDurations), not anything shown to
+      // the rider, so it doesn't need OSRM's accuracy.
+      const tripMiles = pickupCoords && dropoffCoords ? haversineMiles(pickupCoords, dropoffCoords) : null
+      const { driverApproachDurationMs, tripDurationMs } = demoLegDurations(approach?.distanceMiles, tripMiles)
       const newRequest = {
         id: `req_${Date.now()}`,
         status: 'SEARCHING', // SEARCHING, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED
@@ -157,6 +193,8 @@ export function TripProvider({ children }) {
         driverStartCoords: approach?.coords || null,
         pickupDistance: approach?.distanceLabel || distance || '2.4 mi',
         pickupEta: approach?.etaLabel || eta || '8 min',
+        driverApproachDurationMs,
+        tripDurationMs,
       }
       setCurrentTrip(newRequest)
       return newRequest
@@ -179,6 +217,13 @@ export function TripProvider({ children }) {
       // matters for a trip persisted before that existed (e.g. a stale
       // localStorage entry from an older build reloaded mid-flight).
       const approach = prev.driverStartCoords ? null : simulateDriverApproach(prev.pickupCoords)
+      const tripMiles =
+        prev.driverApproachDurationMs && prev.tripDurationMs
+          ? null
+          : prev.pickupCoords && prev.dropoffCoords
+            ? haversineMiles(prev.pickupCoords, prev.dropoffCoords)
+            : null
+      const fallbackDurations = demoLegDurations(approach?.distanceMiles, tripMiles)
       return {
         ...prev,
         status: 'ACCEPTED',
@@ -186,6 +231,8 @@ export function TripProvider({ children }) {
         driverStartCoords: prev.driverStartCoords || approach?.coords || null,
         pickupDistance: prev.pickupDistance || approach?.distanceLabel || prev.distance,
         pickupEta: prev.pickupEta || approach?.etaLabel || prev.eta,
+        driverApproachDurationMs: prev.driverApproachDurationMs || fallbackDurations.driverApproachDurationMs,
+        tripDurationMs: prev.tripDurationMs || fallbackDurations.tripDurationMs,
         driver: driverInfo || {
           name: 'Marcus Vance',
           car: 'Tesla Model Y — Matte Black',

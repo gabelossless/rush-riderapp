@@ -5,10 +5,12 @@
 [#8](https://github.com/gabelossless/rush-riderapp/pull/8), and
 [#9](https://github.com/gabelossless/rush-riderapp/pull/9) merged — two-leg
 trip animation, nav/map/safety redesign, MVP roadmap). Branch
-`claude/ride-demo-maps-visuals-6wgly0` carries one more commit on top, not
+`claude/ride-demo-maps-visuals-6wgly0` carries two more commits on top, not
 yet in a PR: a post-merge polish pass (fallback-map pin clipping, tip
-charging, accessibility labels — see entry 21 at the bottom of this file).
-Lint clean, 47/47 tests across 5 files, build succeeds.
+charging, accessibility labels) and a collapsible-card/distance-scaled-
+timing pass fixing the "Driver En Route" card blocking the demo (entries
+21-22 at the bottom of this file). Lint clean, 47/47 tests across 5 files,
+build succeeds.
 **Also see**: [`ROADMAP.md`](ROADMAP.md) — the demo→MVP transition plan
 (what already transfers to production, what's demo-only and has to be
 rebuilt, and a phased plan starting with the ride/customer experience).
@@ -423,8 +425,63 @@ Lint clean, 47/47 tests, build succeeds.
     `localStorage` ground truth (trip status, `tripHistory`, wallet
     balance) alongside screenshots — not scraped UI text, per the standing
     lesson from earlier in this project. Lint clean, 47/47 tests, build
-    succeeds. **Not yet in a PR** — sitting on
-    `claude/ride-demo-maps-visuals-6wgly0` as of this writing.
+    succeeds.
+
+22. **The "Driver En Route" card was blocking the demo it's supposed to
+    narrate.** User feedback with a screenshot: the confirmation card is a
+    fine "matched" moment, but it stayed at full size — driver info,
+    3-item checklist, preferences, progress bar, End Session button — for
+    the *entire* ACCEPTED+IN_PROGRESS duration, covering most of the map
+    the whole time the car is supposed to be visibly moving. Two fixes,
+    both in [`App.jsx`](src/App.jsx) unless noted:
+    - **Auto-collapsing card.** New `cardCollapsed` state, reset to
+      `false` and armed with a 4-second collapse timer (`MATCHED_CARD_
+      EXPANDED_MS`) in an effect keyed on `stage` (not `currentTrip.
+      status`, so it fires once per match, not again when the trip quietly
+      moves from ACCEPTED to IN_PROGRESS). After ~4s the full card gives
+      way to a slim bottom bar (avatar, status, driver name/plate, a
+      still-independently-tappable safety-shield button, fare, and a
+      chevron) — tapping it re-expands the full card, which now also has
+      its own collapse chevron. The safety button had to be a sibling
+      `<button>`, not nested inside the bar's own expand-button (a
+      `<button>` inside a `<button>` is invalid HTML and breaks
+      accessibility/click-through) — three separate buttons share the row
+      instead. The collapsed bar also needed more bottom clearance
+      (`pb-10` vs. the full card's `pb-3`) than a straight copy would have
+      used: with the map now visible behind it, the bar's default position
+      landed squarely on top of the map's own bottom-left "Rush Map /
+      Live Denver Map" badge — driver name and badge text rendering
+      through each other at the same corner. Caught by comparing measured
+      `getBoundingClientRect()`s for both elements, not just eyeballing a
+      screenshot.
+    - **Distance-scaled trip duration.** The car's drive was a flat rate
+      (0.015 progress per 80ms tick, ~5.3s/leg) regardless of whether the
+      destination was two blocks away or the airport. `demoLegDurations()`
+      (new, in [`TripContext.jsx`](src/context/TripContext.jsx)) now sizes
+      each leg's duration from real mileage (`simulateDriverApproach`'s
+      distance for leg 1, straight-line `haversineMiles(pickup, dropoff)`
+      for leg 2), split proportionally with a 2-second floor per leg so a
+      driver who spawns close to pickup doesn't finish leg one in a blink.
+      The two constants bounding it (`DEMO_MIN_MS`/`DEMO_MAX_MS`) are
+      deliberately *not* 10000/20000 — they bound only the two driving
+      legs, with `DEMO_FIXED_OVERHEAD_MS` (2.5s SEARCHING + the ~2.2s
+      "driver arrived, hop in" and ~0.6s "trip complete" settle beats
+      outside this function's control, ~5.3s total) subtracted first, so
+      that *(fixed overhead + both legs)* — the whole ride, request to
+      completion — lands in a 10-20s window, not just the driving part.
+      `App.jsx`'s progress ticker reads the stored `driverApproachDuration
+      Ms`/`tripDurationMs` per tick instead of a hardcoded rate, with a
+      5300ms fallback for any trip missing them (a stale persisted trip
+      from before this change). **Verified live**: Ball Arena (~1.7mi)
+      completed end-to-end in 11.49s; DIA (~20mi+) in 18.40s — both inside
+      the 10-20s target, correctly ordered by distance, without the two
+      legs needing to individually re-derive that budget (a leg-duration
+      unit test would be reasonable next-session work; today's
+      verification was live Playwright timing, not a unit test).
+
+    Lint clean, 47/47 tests, build succeeds. **Not yet in a PR** — sitting
+    on `claude/ride-demo-maps-visuals-6wgly0` as of this writing, on top of
+    entry 21's commit.
 
 ---
 

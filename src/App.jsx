@@ -43,6 +43,17 @@ import { googleMapsUrl, wazeUrl } from './utils/navLinks'
 const usd = (n) => `$${(n || 0).toFixed(2)}`
 const DRIVER_PCT = 0.88
 const DEFAULT_PICKUP_COORDS = { lat: 39.7526, lng: -105.0047 }
+// How often the progress ticker advances, and what leg duration to assume
+// if a trip is somehow missing the per-leg durations TripContext computes
+// (a stale persisted trip from an older build) — close to this ticker's
+// old flat rate (0.015 every 80ms = ~5.3s/leg) so an old save doesn't
+// suddenly play at a jarringly different speed.
+const PROGRESS_TICK_MS = 80
+const DEMO_FALLBACK_LEG_MS = 5300
+// How long the full "Driver En Route" confirmation card stays expanded
+// before collapsing to a slim bar — enough to register "matched, on the
+// way," not so long it blocks the map/car animation the rest of the ride.
+const MATCHED_CARD_EXPANDED_MS = 4000
 const initialsOf = (name) =>
   (name || 'US')
     .split(' ')
@@ -250,6 +261,7 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   const [showSafety, setShowSafety] = useState(false)
   const [showCustomTip, setShowCustomTip] = useState(false)
   const [customTipValue, setCustomTipValue] = useState('')
+  const [cardCollapsed, setCardCollapsed] = useState(false)
 
   const currentTierObj = RIDE_TIERS.find((t) => t.id === selectedTier) || RIDE_TIERS[0]
   // Prefer the numeric distanceMiles a geocoded destination carries (see
@@ -309,16 +321,29 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
   // same field/ticker drives both legs (ACCEPTED = driver -> pickup,
   // IN_PROGRESS = pickup -> dropoff); acceptRide()/startRide() each reset
   // it to 0 for their leg. This is what actually moves the car marker on
-  // the map, via carProgress -> MapEngine.
+  // the map, via carProgress -> MapEngine. The tick rate comes from the
+  // leg's own duration (set once in requestRide, scaled by real distance —
+  // see demoLegDurations in TripContext) rather than a flat increment, so
+  // a trip to the airport visibly takes longer to play out than a hop
+  // across downtown, while both stay inside the demo's watchable window.
   useEffect(() => {
     let timeout
     if (currentTrip?.status === 'ACCEPTED' || currentTrip?.status === 'IN_PROGRESS') {
+      const legDurationMs =
+        (currentTrip.status === 'ACCEPTED' ? currentTrip.driverApproachDurationMs : currentTrip.tripDurationMs) ||
+        DEMO_FALLBACK_LEG_MS
       timeout = setTimeout(() => {
-        updateProgress(Math.min(1, (currentTrip.progress || 0) + 0.015))
-      }, 80)
+        updateProgress(Math.min(1, (currentTrip.progress || 0) + PROGRESS_TICK_MS / legDurationMs))
+      }, PROGRESS_TICK_MS)
     }
     return () => clearTimeout(timeout)
-  }, [currentTrip?.status, currentTrip?.progress, updateProgress])
+  }, [
+    currentTrip?.status,
+    currentTrip?.progress,
+    currentTrip?.driverApproachDurationMs,
+    currentTrip?.tripDurationMs,
+    updateProgress,
+  ])
 
   // Honest searching copy: after a few seconds, tell the user the search is expanding.
   useEffect(() => {
@@ -327,6 +352,22 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
       setSearchNote(false)
       t = setTimeout(() => setSearchNote(true), 6500)
     }
+    return () => clearTimeout(t)
+  }, [stage])
+
+  // The full "Driver En Route" card is a confirmation moment, not a
+  // permanent fixture — it used to sit at full size for the whole ride,
+  // covering most of the map (and, for a while, the pickup pin/car itself)
+  // for the entire ACCEPTED+IN_PROGRESS duration. Collapse it to a slim bar
+  // shortly after matching so the car's actual movement is what's on
+  // screen for most of the ride; tapping the bar re-expands it. Keyed on
+  // `stage`, not `currentTrip.status`, so this fires once per match
+  // (searching -> matched), not again when the trip quietly moves from
+  // ACCEPTED to IN_PROGRESS.
+  useEffect(() => {
+    if (stage !== 'matched') return
+    setCardCollapsed(false)
+    const t = setTimeout(() => setCardCollapsed(true), MATCHED_CARD_EXPANDED_MS)
     return () => clearTimeout(t)
   }, [stage])
 
@@ -669,7 +710,63 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
           </motion.div>
         )}
 
-        {stage === 'matched' && currentTrip && (
+        {stage === 'matched' && currentTrip && cardCollapsed && (
+          <motion.div
+            key="matched-collapsed"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            // Extra bottom clearance (vs. the full card's pb-3): with the
+            // map now mostly uncovered, this pill sits right where the
+            // map's own bottom-left "Rush Map"/"Live Denver Map" badge
+            // lives — pb-10 keeps their footprints from overlapping.
+            className="absolute inset-x-0 bottom-0 z-20 flex justify-center px-3 pb-10"
+          >
+            <div className="glass flex w-full max-w-lg items-center gap-2 rounded-2xl border border-white/10 p-2.5 pr-3 shadow-2xl shadow-black/50">
+              <button
+                onClick={() => {
+                  triggerHaptic('light')
+                  setCardCollapsed(false)
+                }}
+                aria-label="Expand trip card"
+                className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]"
+              >
+                <Avatar size={36} initials={currentTrip.driver?.initials || 'MV'} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11.5px] font-extrabold text-white">
+                    {currentTrip.status === 'ACCEPTED' ? 'Driver En Route' : 'Trip In Progress'}
+                  </p>
+                  <p className="truncate text-[10px] font-medium text-white/45">
+                    {currentTrip.driver?.name || 'Marcus Vance'} • {currentTrip.driver?.plate || 'RUSH-88'}
+                  </p>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  triggerHaptic('light')
+                  setShowSafety(true)
+                }}
+                aria-label="Trip safety"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white/55 transition-colors hover:border-[#FF6B6B]/40 hover:text-[#FF6B6B] active:scale-95"
+              >
+                <ShieldAlert size={13} />
+              </button>
+              <button
+                onClick={() => {
+                  triggerHaptic('light')
+                  setCardCollapsed(false)
+                }}
+                aria-label="Expand trip card"
+                className="flex shrink-0 items-center gap-1.5 active:scale-95"
+              >
+                <span className="text-[13px] font-black text-[#34D399]">{usd(currentTrip.fare)}</span>
+                <ChevronUp size={14} className="text-white/35" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {stage === 'matched' && currentTrip && !cardCollapsed && (
           <motion.div
             key="matched"
             initial={{ y: 80, opacity: 0 }}
@@ -694,6 +791,16 @@ function PassengerViewContent({ onOpenWallet, onImmersiveChange }) {
                     <ShieldAlert size={14} />
                   </button>
                   <span className="text-sm font-black text-[#34D399]">{usd(currentTrip.fare)}</span>
+                  <button
+                    onClick={() => {
+                      triggerHaptic('light')
+                      setCardCollapsed(true)
+                    }}
+                    aria-label="Collapse trip card"
+                    className="flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white/55 transition-colors hover:text-white active:scale-95"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
                 </div>
               </div>
 
