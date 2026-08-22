@@ -116,6 +116,7 @@ export default function LocationSearch({
             triggerHaptic('light')
             onBack()
           }}
+          aria-label="Back"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
         >
           <ChevronLeft size={17} />
@@ -226,6 +227,7 @@ export default function LocationSearch({
           {query && (
             <button
               onClick={() => setQuery('')}
+              aria-label="Clear destination search"
               className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] p-1 text-white/50"
             >
               <X size={12} />

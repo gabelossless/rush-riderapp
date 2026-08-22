@@ -1,12 +1,16 @@
 # 🤝 Agent Handoff & Project Status Report
 
 **Repository**: [github.com/gabelossless/rush-riderapp](https://github.com/gabelossless/rush-riderapp)
-**Status**: 🟢 `main` at `2d419c5` (PRs [#7](https://github.com/gabelossless/rush-riderapp/pull/7) and [#8](https://github.com/gabelossless/rush-riderapp/pull/8) merged). Branch
-`claude/ride-demo-maps-visuals-6wgly0` carries three more commits on top, in
-[PR #9](https://github.com/gabelossless/rush-riderapp/pull/9) — the
-two-leg trip animation, the nav/map/safety redesign, and this
-documentation pass, all detailed at the bottom of this file. Lint clean,
-47/47 tests across 5 files, build succeeds.
+**Status**: 🟢 `main` at `d6016db` (PRs [#7](https://github.com/gabelossless/rush-riderapp/pull/7),
+[#8](https://github.com/gabelossless/rush-riderapp/pull/8), and
+[#9](https://github.com/gabelossless/rush-riderapp/pull/9) merged — two-leg
+trip animation, nav/map/safety redesign, MVP roadmap). Branch
+`claude/ride-demo-maps-visuals-6wgly0` carries two more commits on top, not
+yet in a PR: a post-merge polish pass (fallback-map pin clipping, tip
+charging, accessibility labels) and a collapsible-card/distance-scaled-
+timing pass fixing the "Driver En Route" card blocking the demo (entries
+21-22 at the bottom of this file). Lint clean, 47/47 tests across 5 files,
+build succeeds.
 **Also see**: [`ROADMAP.md`](ROADMAP.md) — the demo→MVP transition plan
 (what already transfers to production, what's demo-only and has to be
 rebuilt, and a phased plan starting with the ride/customer experience).
@@ -345,6 +349,139 @@ risk here is low, but a live-network check on the deployed preview is
 still the more complete verification).
 
 Lint clean, 47/47 tests, build succeeds.
+
+---
+
+21. **Post-merge polish pass** — after PR #9 merged, took a fresh round of
+    Playwright screenshots across the full rider flow (edge-case address
+    search, rapid taps, small/tall viewports, every modal) specifically
+    hunting for bugs rather than confirming known-good states. Found and
+    fixed three real ones:
+    - **Fallback map: two of six preset destination pins were rendering
+      off-screen.** The `CyberGridFallback` SVG uses
+      `preserveAspectRatio="xMidYMid slice"` (cover behavior) so it fills
+      any viewport without letterboxing — but on a typical tall/narrow
+      phone screen that crops roughly the outer 20% off each horizontal
+      edge, and `projectToGrid()` was mapping the full Denver bounding box
+      edge-to-edge across the SVG's entire width with only a 20px margin.
+      Measured live: **Denver International Airport**'s dropoff pin
+      rendered at x=389–418 on a 390px-wide viewport — 97% of it past the
+      right edge. Red Rocks Amphitheatre sat right at the opposite
+      boundary. Fixed by widening `projectToGrid`/`projectToGridInverse`'s
+      margin/scale (`GRID_X_MARGIN`/`GRID_X_SCALE` in
+      [`MapEngine.jsx`](src/components/MapEngine.jsx)) so every preset
+      destination lands with real headroom inside the band that survives
+      the crop, in-town points barely moving. Verified live: DIA's pin now
+      renders fully at x=347–376.
+    - **The fallback map's own corner badge had the identical bug** — "Rush
+      Map · Simplified View" was drawn inside the same cropped SVG
+      coordinate space, so roughly the first third of the string ("Rush
+      Map") was invisible, leaving a stray "· Simplified View" with no
+      antecedent. Moved it out of the SVG entirely into a normal
+      `absolute bottom-4 left-4` HTML overlay — the same technique the
+      real map's own "Live Denver Map" badge already used — so it's flush
+      to the actual screen edge regardless of the SVG's internal crop.
+    - **Tipping was entirely cosmetic — no money ever moved.** The
+      completed-trip screen's tip selector (including the $2/$5/$10
+      presets, not just the custom-amount field) only ever changed the
+      displayed "Total Paid" number; `tip` state was never passed to
+      `deductRiderFare`, never credited to the driver, and never attached
+      to the trip's history record. A rider could select a $10 tip, submit,
+      and their wallet balance — checkable one tap away in the same
+      session — would be unchanged. Fixed in three places: `finishCompleted`
+      in [`App.jsx`](src/App.jsx) now calls `deductRiderFare(tip, {
+      countsAsRide: false })` when the rider submits (the `countsAsRide`
+      flag is new on `deductRiderFare` in
+      [`AuthContext.jsx`](src/context/AuthContext.jsx) — it also increments
+      `totalRides`, which the base fare already does once per trip, so a
+      second call for the tip needed to opt out or every trip would count
+      twice); a new `recordTip(tripId, amount)` action in
+      [`TripContext.jsx`](src/context/TripContext.jsx) patches the tip onto
+      the trip's already-written history entry, since the tip is chosen
+      *after* `completeRide()` runs; and both
+      [`WalletModal.jsx`](src/components/WalletModal.jsx)'s activity feed
+      and [`HistoryModal.jsx`](src/components/HistoryModal.jsx)'s per-trip
+      receipt now fold the tip in — 100% to the driver, no platform cut,
+      unlike the base fare's 88/12 split (`HistoryModal`'s summary total
+      keeps fare and tip sums separate internally for exactly this reason;
+      combining them before applying `DRIVER_PCT` would have taxed the
+      tip too). Verified live end-to-end: submitted a $10 tip, wallet
+      balance dropped by exactly $10, `totalRides` didn't double-count,
+      and the trip shows up in both History ("$23.74", tip line itemized)
+      and Wallet ("-$23.74 · incl. $10.00 tip") correctly reconciled.
+    - **Accessibility: every icon-only dismiss/back button in the app had
+      zero accessible name** — not a regression from this session, a
+      pre-existing gap across the whole codebase, discovered because a
+      Playwright `getByLabel('Close...')` call couldn't find the Safety
+      Sheet's close button. Added `aria-label` to all nine: the close (✕)
+      buttons on `AccountModal`, `FeedbackModal`, `HistoryModal`,
+      `WalletModal`, `SafetySheet`, and `PWAInstallPrompt`'s dismiss; the
+      back (‹) buttons on `LocationSearch`, `RideConfirmSheet`, and
+      `SignUpFlow`; and `LocationSearch`'s destination-clear button. A
+      screen-reader user previously had no way to know what any of these
+      nine buttons did.
+
+    All three fixes verified with fresh Playwright runs reading
+    `localStorage` ground truth (trip status, `tripHistory`, wallet
+    balance) alongside screenshots — not scraped UI text, per the standing
+    lesson from earlier in this project. Lint clean, 47/47 tests, build
+    succeeds.
+
+22. **The "Driver En Route" card was blocking the demo it's supposed to
+    narrate.** User feedback with a screenshot: the confirmation card is a
+    fine "matched" moment, but it stayed at full size — driver info,
+    3-item checklist, preferences, progress bar, End Session button — for
+    the *entire* ACCEPTED+IN_PROGRESS duration, covering most of the map
+    the whole time the car is supposed to be visibly moving. Two fixes,
+    both in [`App.jsx`](src/App.jsx) unless noted:
+    - **Auto-collapsing card.** New `cardCollapsed` state, reset to
+      `false` and armed with a 4-second collapse timer (`MATCHED_CARD_
+      EXPANDED_MS`) in an effect keyed on `stage` (not `currentTrip.
+      status`, so it fires once per match, not again when the trip quietly
+      moves from ACCEPTED to IN_PROGRESS). After ~4s the full card gives
+      way to a slim bottom bar (avatar, status, driver name/plate, a
+      still-independently-tappable safety-shield button, fare, and a
+      chevron) — tapping it re-expands the full card, which now also has
+      its own collapse chevron. The safety button had to be a sibling
+      `<button>`, not nested inside the bar's own expand-button (a
+      `<button>` inside a `<button>` is invalid HTML and breaks
+      accessibility/click-through) — three separate buttons share the row
+      instead. The collapsed bar also needed more bottom clearance
+      (`pb-10` vs. the full card's `pb-3`) than a straight copy would have
+      used: with the map now visible behind it, the bar's default position
+      landed squarely on top of the map's own bottom-left "Rush Map /
+      Live Denver Map" badge — driver name and badge text rendering
+      through each other at the same corner. Caught by comparing measured
+      `getBoundingClientRect()`s for both elements, not just eyeballing a
+      screenshot.
+    - **Distance-scaled trip duration.** The car's drive was a flat rate
+      (0.015 progress per 80ms tick, ~5.3s/leg) regardless of whether the
+      destination was two blocks away or the airport. `demoLegDurations()`
+      (new, in [`TripContext.jsx`](src/context/TripContext.jsx)) now sizes
+      each leg's duration from real mileage (`simulateDriverApproach`'s
+      distance for leg 1, straight-line `haversineMiles(pickup, dropoff)`
+      for leg 2), split proportionally with a 2-second floor per leg so a
+      driver who spawns close to pickup doesn't finish leg one in a blink.
+      The two constants bounding it (`DEMO_MIN_MS`/`DEMO_MAX_MS`) are
+      deliberately *not* 10000/20000 — they bound only the two driving
+      legs, with `DEMO_FIXED_OVERHEAD_MS` (2.5s SEARCHING + the ~2.2s
+      "driver arrived, hop in" and ~0.6s "trip complete" settle beats
+      outside this function's control, ~5.3s total) subtracted first, so
+      that *(fixed overhead + both legs)* — the whole ride, request to
+      completion — lands in a 10-20s window, not just the driving part.
+      `App.jsx`'s progress ticker reads the stored `driverApproachDuration
+      Ms`/`tripDurationMs` per tick instead of a hardcoded rate, with a
+      5300ms fallback for any trip missing them (a stale persisted trip
+      from before this change). **Verified live**: Ball Arena (~1.7mi)
+      completed end-to-end in 11.49s; DIA (~20mi+) in 18.40s — both inside
+      the 10-20s target, correctly ordered by distance, without the two
+      legs needing to individually re-derive that budget (a leg-duration
+      unit test would be reasonable next-session work; today's
+      verification was live Playwright timing, not a unit test).
+
+    Lint clean, 47/47 tests, build succeeds. **Not yet in a PR** — sitting
+    on `claude/ride-demo-maps-visuals-6wgly0` as of this writing, on top of
+    entry 21's commit.
 
 ---
 

@@ -40,6 +40,8 @@ function TripRow({ trip, isDriver }) {
   const [open, setOpen] = useState(false)
   const driverCut = (trip.fare || 0) * DRIVER_PCT
   const platformCut = (trip.fare || 0) - driverCut
+  const tip = trip.tip || 0
+  const totalPaid = (trip.fare || 0) + tip
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] transition-colors">
@@ -57,7 +59,7 @@ function TripRow({ trip, isDriver }) {
             </span>
             <span className="shrink-0 text-[10.5px] font-semibold text-white/40">{timeLabel(trip.date)}</span>
           </div>
-          <span className="shrink-0 text-[15px] font-black text-white">{usd(trip.fare)}</span>
+          <span className="shrink-0 text-[15px] font-black text-white">{usd(totalPaid)}</span>
         </div>
 
         <div className="flex min-w-0 items-center gap-2 text-[12.5px] font-semibold text-white/85">
@@ -104,9 +106,15 @@ function TripRow({ trip, isDriver }) {
                 <span className="text-white/55">Platform fee (12%)</span>
                 <span className="text-white/80">{usd(platformCut)}</span>
               </div>
+              {tip > 0 && (
+                <div className="mt-1.5 flex justify-between">
+                  <span className="text-white/55">{isDriver ? 'Tip (100% to you)' : 'Driver tip'}</span>
+                  <span className="text-[#FFD166]">{usd(tip)}</span>
+                </div>
+              )}
               <div className="mt-2 flex justify-between border-t border-white/10 pt-1.5 text-[12px]">
-                <span className="text-white/70">Total fare</span>
-                <span className="font-black text-white">{usd(trip.fare)}</span>
+                <span className="text-white/70">{tip > 0 ? 'Total paid' : 'Total fare'}</span>
+                <span className="font-black text-white">{usd(totalPaid)}</span>
               </div>
             </div>
           </motion.div>
@@ -121,19 +129,25 @@ export default function HistoryModal({ isOpen, onClose }) {
   const { user } = useAuth()
   const isDriver = user?.role === 'driver'
 
-  const { groups, totalFare } = useMemo(() => {
+  // fareSum and tipSum are kept separate, not folded into one total, because
+  // they're taxed differently: the driver keeps 88% of fare but 100% of tip
+  // (see DRIVER_PCT below) — combining them first and then applying the cut
+  // would wrongly take a platform cut out of tips too.
+  const { groups, fareSum, tipSum } = useMemo(() => {
     const map = new Map()
-    let sum = 0
+    let fare = 0
+    let tip = 0
     for (const t of tripHistory) {
-      sum += t.fare || 0
+      fare += t.fare || 0
+      tip += t.tip || 0
       const label = dayLabel(t.date)
       if (!map.has(label)) map.set(label, [])
       map.get(label).push(t)
     }
-    return { groups: Array.from(map.entries()), totalFare: sum }
+    return { groups: Array.from(map.entries()), fareSum: fare, tipSum: tip }
   }, [tripHistory])
 
-  const summaryAmount = isDriver ? totalFare * DRIVER_PCT : totalFare
+  const summaryAmount = isDriver ? fareSum * DRIVER_PCT + tipSum : fareSum + tipSum
 
   return (
     <AnimatePresence>
@@ -169,6 +183,7 @@ export default function HistoryModal({ isOpen, onClose }) {
             </div>
             <button
               onClick={onClose}
+              aria-label="Close trip history"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 hover:text-white"
             >
               <X size={16} />

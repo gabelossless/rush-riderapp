@@ -36,8 +36,13 @@ export default function WalletModal({ isOpen, onClose }) {
       icon: isDriver ? ArrowDownLeft : ArrowUpRight,
       tint: isDriver ? '#34D399' : '#38BDF8',
       label: isDriver ? `${t.tier || 'Ride'} Payout` : `${t.tier || 'Ride'}`,
-      sub: `${t.pickup} → ${t.destination}`,
-      amount: isDriver ? (t.fare || 0) * DRIVER_PCT : -(t.fare || 0),
+      // Tips are chosen after the ride completes and settle separately (see
+      // TripContext's recordTip), but they're still part of the same trip —
+      // fold them into one line here rather than a second entry the rider
+      // never asked for, and 100% of the tip goes to the driver (unlike the
+      // fare, it isn't split by the FairFare platform cut).
+      sub: t.tip ? `${t.pickup} → ${t.destination} · incl. ${usd(t.tip)} tip` : `${t.pickup} → ${t.destination}`,
+      amount: isDriver ? (t.fare || 0) * DRIVER_PCT + (t.tip || 0) : -((t.fare || 0) + (t.tip || 0)),
     }))
     const depositEntries = demoDeposits.map((d) => ({
       id: d.id,
@@ -84,6 +89,7 @@ export default function WalletModal({ isOpen, onClose }) {
             </div>
             <button
               onClick={onClose}
+              aria-label="Close wallet"
               className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 hover:text-white"
             >
               <X size={16} />

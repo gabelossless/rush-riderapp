@@ -658,17 +658,31 @@ function MapEngineContent({
 
       {/* Fallback (no WebGL / offline) */}
       {mapState === 'error' && (
-        <CyberGridFallback
-          showRoute={showRoute}
-          pickup={fallbackPickup}
-          dropoff={fallbackDropoff}
-          routeFrom={fallbackRouteFrom}
-          routeTo={fallbackRouteTo}
-          dropoffLabel={dropoffLabel}
-          car={fallbackCar}
-          radar={radar}
-          onMapClick={onMapClick}
-        />
+        <>
+          <CyberGridFallback
+            showRoute={showRoute}
+            pickup={fallbackPickup}
+            dropoff={fallbackDropoff}
+            routeFrom={fallbackRouteFrom}
+            routeTo={fallbackRouteTo}
+            dropoffLabel={dropoffLabel}
+            car={fallbackCar}
+            radar={radar}
+            onMapClick={onMapClick}
+          />
+          {/* A quiet corner mark, not a center-screen apology — this view is
+              a deliberate style, the same way the real map carries a "Live
+              Denver Map" badge in the same spot. Rendered as a normal HTML
+              overlay (like that badge) rather than inside the SVG: the SVG
+              uses preserveAspectRatio="slice" to fill the frame on any
+              screen size, which crops its own edges on tall phone
+              viewports — anything drawn near the SVG's edge, including a
+              corner label, would get cropped along with it. */}
+          <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-1.5 text-[9.5px] font-bold tracking-wide text-white/55">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#38BDF8]" />
+            Rush Map · Simplified View
+          </div>
+        </>
       )}
 
       {/* Focus Denver pill — shown after a Colorado-wide reveal when GPS is unavailable */}
@@ -720,13 +734,31 @@ function MapEngineContent({
 /*  Denver lat/lng → fallback grid projection                          */
 /* ------------------------------------------------------------------ */
 
+// The SVG below renders with preserveAspectRatio="xMidYMid slice" (cover
+// behavior) into a viewBox 400 units wide — but on a typical tall/narrow
+// phone viewport, "slice" scales by height and crops the sides to fill
+// the frame, hiding roughly the outer 20% on each edge. A marker mapped
+// all the way to the true 20-380 edges (as this used to do) can end up
+// rendered off-screen: Denver International Airport measured at local
+// x≈324 landed almost entirely past the right crop on a 390px-wide
+// screen. X_MARGIN/X_SCALE keep every preset destination's longitude
+// inside the roughly [84,316] band that survives the crop on common
+// phone aspect ratios, with headroom to spare, while leaving in-town
+// points (which were already central) essentially unmoved. Y isn't
+// adjusted — "slice" scales by height on portrait phones, so the
+// vertical axis doesn't get cropped the same way.
+const GRID_X_MARGIN = 45
+const GRID_X_SCALE = 300
+const GRID_Y_MARGIN = 20
+const GRID_Y_SCALE = 430
+
 function projectToGrid(lat, lng) {
   const LON_MIN = -105.35
   const LON_MAX = -104.55
   const LAT_MIN = 39.55
   const LAT_MAX = 39.85
-  const x = 20 + ((lng - LON_MIN) / (LON_MAX - LON_MIN)) * 360
-  const y = 20 + ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * 430
+  const x = GRID_X_MARGIN + ((lng - LON_MIN) / (LON_MAX - LON_MIN)) * GRID_X_SCALE
+  const y = GRID_Y_MARGIN + ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * GRID_Y_SCALE
   return { x: Math.round(x), y: Math.round(y) }
 }
 
@@ -918,16 +950,6 @@ function CyberGridFallback({ showRoute, pickup, dropoff, routeFrom, routeTo, dro
       )}
 
       <rect width="400" height="470" fill="url(#fgVignette)" />
-
-      {/* A quiet corner mark, not a center-screen apology — this view is
-          a deliberate style, the same way the real map carries a "Live
-          Denver Map" badge in the same spot. */}
-      <g transform="translate(14, 448)" opacity="0.85">
-        <circle cx="0" cy="-3.5" r="3" fill="#38BDF8" />
-        <text x="10" y="0" fill="rgba(255,255,255,0.55)" fontSize="9.5" fontWeight="700" letterSpacing="0.5">
-          Rush Map · Simplified View
-        </text>
-      </g>
     </svg>
   )
 }
@@ -937,8 +959,8 @@ function projectToGridInverse(x, y) {
   const LON_MAX = -104.55
   const LAT_MIN = 39.55
   const LAT_MAX = 39.85
-  const lng = LON_MIN + ((x - 20) / 360) * (LON_MAX - LON_MIN)
-  const lat = LAT_MIN + ((y - 20) / 430) * (LAT_MAX - LAT_MIN)
+  const lng = LON_MIN + ((x - GRID_X_MARGIN) / GRID_X_SCALE) * (LON_MAX - LON_MIN)
+  const lat = LAT_MIN + ((y - GRID_Y_MARGIN) / GRID_Y_SCALE) * (LAT_MAX - LAT_MIN)
   return { lat: Number(lat.toFixed(5)), lng: Number(lng.toFixed(5)) }
 }
 

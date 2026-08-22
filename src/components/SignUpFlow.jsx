@@ -238,6 +238,7 @@ export default function SignUpFlow({ onComplete }) {
           {step !== 'landing' && step !== 'success' && (
             <button
               onClick={goBack}
+              aria-label="Back"
               className="absolute left-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60 transition-colors hover:text-white"
             >
               <ChevronLeft size={16} />
